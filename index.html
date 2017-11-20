@@ -17,10 +17,10 @@ var maxRadius = 5;
 
 // Foci
 var clusters = {
-  "toppos": { x: 475, y: 150, color: "#cc5efa" },
-  "leftpos": { x: 225, y: 300, color: "#29bf10" }, 
-  "rightpos": { x: 725, y: 300, color: "#23cdc7" },
-  "bottompos": { x: 475, y: 450, color: "#eb494f" },
+  "seekers": { x: 475, y: 150, color: "#000000" },
+  "recognized": { x: 225, y: 300, color: "#00ff00" }, 
+  "rejected": { x: 725, y: 300, color: "#ff0000" },
+  "other": { x: 475, y: 450, color: "#0000ff" },
 };
 
 
@@ -31,7 +31,7 @@ var n = 200, // total number of circles
 
 var nodes = d3.range(n).map(function(id) {
     // var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
-    var cluster = clusters["toppos"];
+    var cluster = clusters["seekers"];
     var d = {
         id: id,
         cluster: cluster,
@@ -113,7 +113,7 @@ function forceCluster(alpha) {
 // Run function periodically to make things move.
 var timeout;
 function timer() {
-    // Random place for a node to go
+    /*// Random place for a node to go
     var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
     var randomCluster = clusters[randomKey];
 
@@ -123,7 +123,7 @@ function timer() {
     // nodes[random_index].x = randomCluster.x;
     // nodes[random_index].y = randomCluster.y;
     nodes[random_index].cluster = randomCluster;
-    
+    */
     force.alpha(0.015);
     // force.restart();
     
@@ -131,7 +131,33 @@ function timer() {
     timeout = setTimeout(timer, 400);
 }
 
-timeout = setTimeout(timer, 2000);
+setTimeout(timer, 400);
+
+setTimeout(function() {
+  var recognized = 100;
+  var rejected = 50;
+  var other = 10;
+
+  var recognizedNodes = nodes.slice(0, recognized);
+  var rejectedNodes = nodes.slice(recognized, recognized + rejected);
+  var otherNodes = nodes.slice(recognized + rejected, recognized + rejected + other);
+
+  for (let i = 0; i < recognizedNodes.length; i++) {
+    let node = recognizedNodes[i];
+    node.cluster = clusters['recognized'];
+  }
+  for (let i = 0; i < rejectedNodes.length; i++) {
+    let node = rejectedNodes[i];
+    node.cluster = clusters['rejected'];
+  }
+  for (let i = 0; i < otherNodes.length; i++) {
+    let node = otherNodes[i];
+    node.cluster = clusters['other'];
+  }
+  
+  force.alpha(0.015);
+}, 2000);
+
 
 
 </script>
