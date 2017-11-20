@@ -76,7 +76,7 @@ var force = d3.forceSimulation(nodes)
     // .force("x", forceX)
     .on("tick", tick);
 
-function tick() {
+function tick() {  //updating frame of animation: redrawing in the new position in new color
   // console.log('tick. alpha: ' + this.alpha())
   circle
   // .each(gravity(this.alpha()))
@@ -86,77 +86,70 @@ function tick() {
 }
 
 
-// Move nodes toward cluster focus.
-function gravity(alpha) {
-  return function(d) {
-    // console.log(JSON.stringify(d));
-    d.y += (d.cluster.y - d.y) * alpha;
-    d.x += (d.cluster.x - d.x) * alpha;
-  };
-}
+function forceCluster(alpha) { //changes the velocity x and y
+  // going through every node
+  for (var i = 0;  i < nodes.length; ++i) {
+    var node = nodes[i];
 
-function forceX(params) {
-  console.log("forceX params: " + params);
-}
-
-function forceCluster(alpha) {
-  // console.log("forceCluster alpha: " + alpha);
-  for (var i = 0, n = nodes.length, node, cluster, k = alpha * 1; i < n; ++i) {
-    node = nodes[i];
-
-    node.vx -= (node.x - node.cluster.x) * k;
-    node.vy -= (node.y - node.cluster.y) * k;
+    node.vx -= (node.x - node.cluster.x) * alpha;
+    node.vy -= (node.y - node.cluster.y) * alpha;
     // console.log(JSON.stringify(node));
   }
 }
 
+// GET RID OF TIMERRRRRRRR!!!!!
 // Run function periodically to make things move.
 var timeout;
 function timer() {
-    /*// Random place for a node to go
-    var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
-    var randomCluster = clusters[randomKey];
+    // // Random place for a node to go
+    // var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
+    // var randomCluster = clusters[randomKey];
 
     
-    // Update random node
-    var random_index = Math.floor( Math.random() * nodes.length );
-    // nodes[random_index].x = randomCluster.x;
-    // nodes[random_index].y = randomCluster.y;
-    nodes[random_index].cluster = randomCluster;
-    */
+    // // Update random node
+    // var random_index = Math.floor( Math.random() * nodes.length );
+    // // nodes[random_index].x = randomCluster.x;
+    // // nodes[random_index].y = randomCluster.y;
+    // nodes[random_index].cluster = randomCluster;
+    
     force.alpha(0.015);
     // force.restart();
     
-    // Run it again in a few seconds.
+    // call itself every .4 seconds
     timeout = setTimeout(timer, 400);
 }
+//setTimeout(timer, 400);  //give buffer to when timer runs
 
-setTimeout(timer, 400);
+var pending = nodes.slice();
 
-setTimeout(function() {
+
+function classify() {
   var recognized = 100;
   var rejected = 50;
   var other = 10;
 
-  var recognizedNodes = nodes.slice(0, recognized);
-  var rejectedNodes = nodes.slice(recognized, recognized + rejected);
-  var otherNodes = nodes.slice(recognized + rejected, recognized + rejected + other);
+  if (pending.length > (n - (recognized + rejected + other))) {
+    var random = Math.random() * n; //between 0-199
+    if (random < recognized) {
+      let node = pending.pop();
+      node.cluster = clusters["recognized"];
+    } else if (random < recognized + rejected) {
+      let node = pending.pop();
+      node.cluster = clusters["rejected"];
+    } else if (random < recognized + rejected + other) {
+      let node = pending.pop();
+      node.cluster = clusters["other"];
+    }
+  }
 
-  for (let i = 0; i < recognizedNodes.length; i++) {
-    let node = recognizedNodes[i];
-    node.cluster = clusters['recognized'];
-  }
-  for (let i = 0; i < rejectedNodes.length; i++) {
-    let node = rejectedNodes[i];
-    node.cluster = clusters['rejected'];
-  }
-  for (let i = 0; i < otherNodes.length; i++) {
-    let node = otherNodes[i];
-    node.cluster = clusters['other'];
-  }
+  
   
   force.alpha(0.015);
-}, 2000);
+  setTimeout(classify, 100);  // call itself again .1 second later
+}
+
+setTimeout(classify, 1000);
+
 
 
 
