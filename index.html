@@ -28,9 +28,9 @@
     // Foci: where the nodes will go and their color
     var clusters = {
       "seekers": { x: 475, y: 250, color: "#283747" },
-      "recognized": { x: 225, y: 550, color: "#1E8449" }, 
-      "rejected": { x: 525, y: 550, color: "#E74C3C" },
-      "other": { x: 725, y: 550, color: "#5DADE2" },
+      "recognized": { x: 225, y: 500, color: "#1E8449" }, 
+      "rejected": { x: 525, y: 500, color: "#E74C3C" },
+      "other": { x: 725, y: 500, color: "#5DADE2" },
     };
 
 
@@ -63,17 +63,6 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    // Title
-    svg.append('text')
-        .attr('transform', 'translate(475, 190)')
-        .style('text-anchor', 'middle')
-        .style('fill', 'black')
-        .attr('dy', '-2.5em')
-        .style('font-size', 20)
-        .style('font-family',"garamond")
-        .style('font-weight','bold')
-        .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year);
-
 
     // Add the nodes
     var circle = svg.selectAll("circle")
@@ -103,7 +92,7 @@
           .style("fill", function(d) { return d.cluster.color; });
 
       var recognize = svg.append('text')
-        .attr('transform', 'translate(225, 700)')
+        .attr('transform', 'translate(225, 630)')
         .style('text-anchor', 'middle')
         .style('fill', 'black')
         .attr('dy', '-2.5em')
@@ -112,7 +101,7 @@
         .text('Recognized');
 
       var reject = svg.append('text')
-          .attr('transform', 'translate(525, 700)')
+          .attr('transform', 'translate(525, 630)')
           .style('text-anchor', 'middle')
           .style('fill', 'black')
           .attr('dy', '-2.5em')
@@ -121,13 +110,22 @@
           .text('Rejected');
 
       var other = svg.append('text')
-          .attr('transform', 'translate(725,  700)')
+          .attr('transform', 'translate(725,  630)')
           .style('text-anchor', 'middle')
           .style('fill', 'black')
           .attr('dy', '-2.5em')
           .style('font-size', 20)
           .style('font-family',"garamond")
           .text('Other outcome');
+
+      var ast = svg.append('text')
+          .attr('transform', 'translate(' + width/2 + ', 675)')
+          .style('text-anchor', 'middle')
+          .style('fill', 'black')
+          .attr('dy', '-2.5em')
+          .style('font-size', 15)
+          .style('font-family',"garamond")
+          .text('* Each dot represents 1000 asylum seekers');
     }
 
 
@@ -140,11 +138,22 @@
       }
     }
 
-
-    var pending = nodes.slice(); // Pending will be the ones not selected to move
+    var pending = nodes.slice(); // Copu to pop since pending will be the ones not selected to move
 
     // Classify each node probablistically
     function classify() {
+
+      // Title
+      var seek = svg.append('text')
+        .attr('transform', 'translate(475, 190)')
+        .style('text-anchor', 'middle')
+        .style('fill', 'black')
+        .attr('dy', '-2.5em')
+        .style('font-size', 20)
+        .style('font-family',"garamond")
+        .style('font-weight','bold')
+        .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year); 
+
       if (pending.length > (n - (recognized + rejected + other))) {
         var random = Math.random() * n; 
         
@@ -159,9 +168,9 @@
         } else if (random < recognized + rejected + other) {
           let node = pending.pop();
           node.cluster = clusters["other"];
-        }
+        } 
       }
-
+      
       simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
       setTimeout(classify, 100);  // Call itself again .1 second later
     } 
