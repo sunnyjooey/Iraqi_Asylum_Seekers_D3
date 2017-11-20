@@ -1,156 +1,174 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<title>pbogden Clustered Force Layout</title>
-<head>
-<style >
-  svg {background-color: #DADFFF;}
-</style>
-</head>
-<body>
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script>
-var margin = {top: 16, right: 0, bottom: 0, left: 0},
-    width = 950 - margin.left - margin.right,
-    height = 700 - margin.top - margin.bottom;
+  <title>Visualization of Iraqi Asylum Seekers</title>
+  <head>
+    <style >
+      svg {background-color: #FEF5E7;}
+    </style>
+  </head>
 
-var maxRadius = 5;
+  <body>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
 
-// Foci
-var clusters = {
-  "seekers": { x: 475, y: 150, color: "#000000" },
-  "recognized": { x: 225, y: 300, color: "#00ff00" }, 
-  "rejected": { x: 725, y: 300, color: "#ff0000" },
-  "other": { x: 475, y: 450, color: "#0000ff" },
-};
+    d3.json("irq_asy_de.json", function(error, data) {
+      if (error) {
+        console.log(error); 
+      } else {
+        dataset = data; 
+        console.log(data);} 
+      
+    var margin = {top: 16, right: 0, bottom: 0, left: 0},
+        width = 950 - margin.left - margin.right,
+        height = 700 - margin.top - margin.bottom;
+
+    var radius = 5;
 
 
-var n = 200, // total number of circles
-    m = Object.keys(clusters).length; // number of distinct clusters
-
-// var color = d3.scaleOrdinal(d3.schemeCategory10).domain(d3.range(m));
-
-var nodes = d3.range(n).map(function(id) {
-    // var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
-    var cluster = clusters["seekers"];
-    var d = {
-        id: id,
-        cluster: cluster,
-        x: cluster.x + Math.random(),
-        y: cluster.y + Math.random(),
-        radius: maxRadius
+    // Foci: where the nodes will go and their color
+    var clusters = {
+      "seekers": { x: 475, y: 250, color: "#283747" },
+      "recognized": { x: 225, y: 550, color: "#1E8449" }, 
+      "rejected": { x: 525, y: 550, color: "#E74C3C" },
+      "other": { x: 725, y: 550, color: "#5DADE2" },
     };
-    return d;
-});
-
-// var svg = d3.select("body").append("svg")
-//     .attr("width", width)
-//     .attr("height", height)
-//   .append('g')
-//     .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
-
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .attr("fill", function(d) { return '#abcdef'; })
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-var circle = svg.selectAll("circle")
-    .data(nodes)
-  .enter().append("circle")
-    .attr("r", function(d) { return d.radius; })
-    .style("fill", function(d) { return d.cluster.color; })
-
-var forceCollide = d3.forceCollide()
-    .radius(function(d) { return d.radius + 2; })
-    .iterations(1);
-
-var force = d3.forceSimulation(nodes)
-    // .nodes(nodes)
-    // .force("center", d3.forceCenter())
-    .force("collide", forceCollide)
-    .force("cluster", forceCluster)
-    // .force("gravity", d3.forceManyBody(30))
-    // .force("x", d3.forceX().strength(1))
-    // .force("y", d3.forceY().strength(1))
-    // .force("x", forceX)
-    .on("tick", tick);
-
-function tick() {  //updating frame of animation: redrawing in the new position in new color
-  // console.log('tick. alpha: ' + this.alpha())
-  circle
-  // .each(gravity(this.alpha()))
-      .attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; })
-      .style("fill", function(d) { return d.cluster.color; });
-}
 
 
-function forceCluster(alpha) { //changes the velocity x and y
-  // going through every node
-  for (var i = 0;  i < nodes.length; ++i) {
-    var node = nodes[i];
+    // Nodes for each group
+    var n = Math.round(dataset[0].Total_apps / 1000); // total number of circles
+    var recognized = Math.round(dataset[0].Recognized / 1000);
+    var rejected = Math.round(dataset[0].Rejected / 1000);
+    var other = Math.round(dataset[0].Other / 1000);
+    
 
-    node.vx -= (node.x - node.cluster.x) * alpha;
-    node.vy -= (node.y - node.cluster.y) * alpha;
-    // console.log(JSON.stringify(node));
-  }
-}
-
-// GET RID OF TIMERRRRRRRR!!!!!
-// Run function periodically to make things move.
-var timeout;
-function timer() {
-    // // Random place for a node to go
-    // var randomKey = Object.keys(clusters)[Math.floor(Math.random() * m)];
-    // var randomCluster = clusters[randomKey];
+    // Create nodes
+    var nodes = d3.range(n).map(function(id) {
+        var cluster = clusters["seekers"];  //everyone starts out as seekers
+        var d = {
+            id: id,
+            cluster: cluster,
+            x: cluster.x + Math.random(),
+            y: cluster.y + Math.random(),
+            radius: radius
+        };
+        return d;
+    });
 
     
-    // // Update random node
-    // var random_index = Math.floor( Math.random() * nodes.length );
-    // // nodes[random_index].x = randomCluster.x;
-    // // nodes[random_index].y = randomCluster.y;
-    // nodes[random_index].cluster = randomCluster;
-    
-    force.alpha(0.015);
-    // force.restart();
-    
-    // call itself every .4 seconds
-    timeout = setTimeout(timer, 400);
-}
-//setTimeout(timer, 400);  //give buffer to when timer runs
+    // Create svg
+    var svg = d3.select("body").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .attr("fill", function(d) { return '#abcdef'; })
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var pending = nodes.slice();
+    // Title
+    svg.append('text')
+        .attr('transform', 'translate(475, 190)')
+        .style('text-anchor', 'middle')
+        .style('fill', 'black')
+        .attr('dy', '-2.5em')
+        .style('font-size', 20)
+        .style('font-family',"garamond")
+        .style('font-weight','bold')
+        .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year);
 
 
-function classify() {
-  var recognized = 100;
-  var rejected = 50;
-  var other = 10;
+    // Add the nodes
+    var circle = svg.selectAll("circle")
+        .data(nodes)
+        .enter().append("circle")
+        .attr("r", function(d) { return d.radius; })
+        .style("fill", function(d) { return d.cluster.color; })
 
-  if (pending.length > (n - (recognized + rejected + other))) {
-    var random = Math.random() * n; //between 0-199
-    if (random < recognized) {
-      let node = pending.pop();
-      node.cluster = clusters["recognized"];
-    } else if (random < recognized + rejected) {
-      let node = pending.pop();
-      node.cluster = clusters["rejected"];
-    } else if (random < recognized + rejected + other) {
-      let node = pending.pop();
-      node.cluster = clusters["other"];
+
+    // Prevent collisions between nodes
+    var forceCollide = d3.forceCollide()
+        .radius(function(d) { return d.radius + 2; });
+
+
+    // Force-directed layout
+    var simulation = d3.forceSimulation(nodes)
+        .force("collide", forceCollide)
+        .force("cluster", forceCluster)
+        .on("tick", tick);
+
+
+    // Update frame of animation: redraw in the new position in new color with each tick
+    function tick() {
+      circle
+          .attr("cx", function(d) { return d.x; })
+          .attr("cy", function(d) { return d.y; })
+          .style("fill", function(d) { return d.cluster.color; });
+
+      var recognize = svg.append('text')
+        .attr('transform', 'translate(225, 700)')
+        .style('text-anchor', 'middle')
+        .style('fill', 'black')
+        .attr('dy', '-2.5em')
+        .style('font-size', 20)
+        .style('font-family',"garamond")
+        .text('Recognized');
+
+      var reject = svg.append('text')
+          .attr('transform', 'translate(525, 700)')
+          .style('text-anchor', 'middle')
+          .style('fill', 'black')
+          .attr('dy', '-2.5em')
+          .style('font-size', 20)
+          .style('font-family',"garamond")
+          .text('Rejected');
+
+      var other = svg.append('text')
+          .attr('transform', 'translate(725,  700)')
+          .style('text-anchor', 'middle')
+          .style('fill', 'black')
+          .attr('dy', '-2.5em')
+          .style('font-size', 20)
+          .style('font-family',"garamond")
+          .text('Other outcome');
     }
-  }
-
-  
-  
-  force.alpha(0.015);
-  setTimeout(classify, 100);  // call itself again .1 second later
-}
-
-setTimeout(classify, 1000);
 
 
+    // Change the x, y velocity for each node
+    function forceCluster(alpha) {
+      for (var i = 0;  i < nodes.length; ++i) {
+        var node = nodes[i];
+        node.vx -= (node.x - node.cluster.x) * alpha;
+        node.vy -= (node.y - node.cluster.y) * alpha;
+      }
+    }
 
 
-</script>
+    var pending = nodes.slice(); // Pending will be the ones not selected to move
+
+    // Classify each node probablistically
+    function classify() {
+      if (pending.length > (n - (recognized + rejected + other))) {
+        var random = Math.random() * n; 
+        
+        if (random < recognized) {
+          let node = pending.pop();
+          node.cluster = clusters["recognized"];
+
+        } else if (random < recognized + rejected) {
+          let node = pending.pop();
+          node.cluster = clusters["rejected"];
+
+        } else if (random < recognized + rejected + other) {
+          let node = pending.pop();
+          node.cluster = clusters["other"];
+        }
+      }
+
+      simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+      setTimeout(classify, 100);  // Call itself again .1 second later
+    } 
+
+    setTimeout(classify, 1000);
+
+    });
+
+
+  </script>
