@@ -11,6 +11,10 @@
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script>
 
+    /* code based on various internet sources, including:
+    https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
+    https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
+    */
     d3.json("irq_asy_de.json", function(error, data) {
       if (error) {
         console.log(error); 
