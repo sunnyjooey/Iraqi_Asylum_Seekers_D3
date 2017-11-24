@@ -10,7 +10,6 @@
   <body>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script>
-
     /* code based on various internet sources, including:
     https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
     https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
@@ -22,44 +21,50 @@
         dataset = data; 
         console.log(data);} 
       
-    var margin = {top: 16, right: 0, bottom: 0, left: 0},
+    var margin = {top: 20, right: 0, bottom: 0, left: 0},
         width = 950 - margin.left - margin.right,
         height = 700 - margin.top - margin.bottom;
-
     var radius = 5;
-
 
     // Foci: where the nodes will go and their color
     var clusters = {
-      "seekers": { x: 475, y: 250, color: "#283747" },
+      "pending": { x: 475, y: 250, color: "#283747" },
       "recognized": { x: 225, y: 500, color: "#1E8449" }, 
       "rejected": { x: 525, y: 500, color: "#E74C3C" },
       "other": { x: 725, y: 500, color: "#5DADE2" },
     };
-
-
     // Nodes for each group
     var n = Math.round(dataset[0].Total_apps / 1000); // total number of circles
     var recognized = Math.round(dataset[0].Recognized / 1000);
     var rejected = Math.round(dataset[0].Rejected / 1000);
     var other = Math.round(dataset[0].Other / 1000);
     
+    function classify(id) {
+        if (id <= recognized) {
+            return 'recognized';
+        } else if (id > recognized && id <= recognized + rejected) {
+            return 'rejected';
+        } else if (id > recognized + rejected && id <= recognized + rejected + other) {
+            return 'other';
+        } else {
+            return 'pending';
+        };
+    } 
 
-    // Create nodes
+    //Create nodes
     var nodes = d3.range(n).map(function(id) {
-        var cluster = clusters["seekers"];  //everyone starts out as seekers
+        var cluster = classify(id)
         var d = {
             id: id,
-            cluster: cluster,
-            x: cluster.x + Math.random(),
-            y: cluster.y + Math.random(),
+            cluster: clusters[cluster],
+            x: clusters[cluster].x + Math.random(),
+            y: clusters[cluster].y + Math.random(),
             radius: radius
         };
         return d;
     });
 
-    
-    // Create svg
+    // // Create svg
     var svg = d3.select("body").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -67,121 +72,138 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-
-    // Add the nodes
-    var circle = svg.selectAll("circle")
-        .data(nodes)
-        .enter().append("circle")
-        .attr("r", function(d) { return d.radius; })
-        .style("fill", function(d) { return d.cluster.color; })
-
-
-    // Prevent collisions between nodes
-    var forceCollide = d3.forceCollide()
-        .radius(function(d) { return d.radius + 2; });
-
-
-    // Force-directed layout
     var simulation = d3.forceSimulation(nodes)
-        .force("collide", forceCollide)
-        .force("cluster", forceCluster)
-        .on("tick", tick);
+          .force('charge', d3.forceManyBody().strength(5))
+          .force('x', d3.forceX().x(function(d) {
+            return clusters[d.cluster.x];
+          }))
+          .force('y', d3.forceY().y(function(d) {
+            return clusters[d.cluster.y];
+          }))
+          .force('collision', d3.forceCollide().radius(function(d) {
+            return d.radius;
+          }))
+          .on('tick', ticked);
 
+    function ticked() {
+      var u = d3.select('svg g')
+        .selectAll('circle')
+        .data(nodes);
 
-    // Update frame of animation: redraw in the new position in new color with each tick
-    function tick() {
-      circle
-          .attr("cx", function(d) { return d.x; })
-          .attr("cy", function(d) { return d.y; })
-          .style("fill", function(d) { return d.cluster.color; });
+      u.enter()
+        .append('circle')
+        .attr('r', function(d) {
+          return d.radius;
+        })
+        .style('fill', function(d) {
+          return d.cluster.color;
+        })
+        .merge(u)
+        .attr('cx', function(d) {
+          return d.cluster.x;
+        })
+        .attr('cy', function(d) {
+          return d.cluster.y;
+        })
 
-      var recognize = svg.append('text')
-        .attr('transform', 'translate(225, 630)')
-        .style('text-anchor', 'middle')
-        .style('fill', 'black')
-        .attr('dy', '-2.5em')
-        .style('font-size', 20)
-        .style('font-family',"garamond")
-        .text('Recognized');
-
-      var reject = svg.append('text')
-          .attr('transform', 'translate(525, 630)')
-          .style('text-anchor', 'middle')
-          .style('fill', 'black')
-          .attr('dy', '-2.5em')
-          .style('font-size', 20)
-          .style('font-family',"garamond")
-          .text('Rejected');
-
-      var other = svg.append('text')
-          .attr('transform', 'translate(725,  630)')
-          .style('text-anchor', 'middle')
-          .style('fill', 'black')
-          .attr('dy', '-2.5em')
-          .style('font-size', 20)
-          .style('font-family',"garamond")
-          .text('Other outcome');
-
-      var ast = svg.append('text')
-          .attr('transform', 'translate(' + width/2 + ', 675)')
-          .style('text-anchor', 'middle')
-          .style('fill', 'black')
-          .attr('dy', '-2.5em')
-          .style('font-size', 15)
-          .style('font-family',"garamond")
-          .text('* Each dot represents 1000 asylum seekers');
+      u.exit().remove();
     }
 
 
-    // Change the x, y velocity for each node
-    function forceCluster(alpha) {
-      for (var i = 0;  i < nodes.length; ++i) {
-        var node = nodes[i];
-        node.vx -= (node.x - node.cluster.x) * alpha;
-        node.vy -= (node.y - node.cluster.y) * alpha;
-      }
-    }
-
-    var pending = nodes.slice(); // Copu to pop since pending will be the ones not selected to move
-
-    // Classify each node probablistically
-    function classify() {
-
-      // Title
-      var seek = svg.append('text')
-        .attr('transform', 'translate(475, 190)')
-        .style('text-anchor', 'middle')
-        .style('fill', 'black')
-        .attr('dy', '-2.5em')
-        .style('font-size', 20)
-        .style('font-family',"garamond")
-        .style('font-weight','bold')
-        .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year); 
-
-      if (pending.length > (n - (recognized + rejected + other))) {
-        var random = Math.random() * n; 
+    // // Add the nodes
+    // var circle = svg.selectAll("circle")
+    //     .data(nodes)
+    //     .enter().append("circle")
+    //     .attr("r", function(d) { return d.radius; })
+    //     .style("fill", function(d) { return d.cluster.color; })
+    // // Prevent collisions between nodes
+    // var forceCollide = d3.forceCollide()
+    //     .radius(function(d) { return d.radius + 2; });
+    // // Force-directed layout
+    // var simulation = d3.forceSimulation(nodes)
+    //     .force("collide", forceCollide)
+    //     .force("cluster", forceCluster)
+    //     .on("tick", tick);
+    // // Update frame of animation: redraw in the new position in new color with each tick
+    // function tick() {
+    //   circle
+    //       .attr("cx", function(d) { return d.x; })
+    //       .attr("cy", function(d) { return d.y; })
+    //       .style("fill", function(d) { return d.cluster.color; });
+    //   var recognize = svg.append('text')
+    //     .attr('transform', 'translate(225, 630)')
+    //     .style('text-anchor', 'middle')
+    //     .style('fill', 'black')
+    //     .attr('dy', '-2.5em')
+    //     .style('font-size', 20)
+    //     .style('font-family',"garamond")
+    //     .text('Recognized');
+    //   var reject = svg.append('text')
+    //       .attr('transform', 'translate(525, 630)')
+    //       .style('text-anchor', 'middle')
+    //       .style('fill', 'black')
+    //       .attr('dy', '-2.5em')
+    //       .style('font-size', 20)
+    //       .style('font-family',"garamond")
+    //       .text('Rejected');
+    //   var other = svg.append('text')
+    //       .attr('transform', 'translate(725,  630)')
+    //       .style('text-anchor', 'middle')
+    //       .style('fill', 'black')
+    //       .attr('dy', '-2.5em')
+    //       .style('font-size', 20)
+    //       .style('font-family',"garamond")
+    //       .text('Other outcome');
+    //   var ast = svg.append('text')
+    //       .attr('transform', 'translate(' + width/2 + ', 675)')
+    //       .style('text-anchor', 'middle')
+    //       .style('fill', 'black')
+    //       .attr('dy', '-2.5em')
+    //       .style('font-size', 15)
+    //       .style('font-family',"garamond")
+    //       .text('* Each dot represents 1000 asylum seekers');
+    // }
+    // // Change the x, y velocity for each node
+    // function forceCluster(alpha) {
+    //   for (var i = 0;  i < nodes.length; ++i) {
+    //     var node = nodes[i];
+    //     node.vx -= (node.x - node.cluster.x) * alpha;
+    //     node.vy -= (node.y - node.cluster.y) * alpha;
+    //   }
+    // }
+    // var pending = nodes.slice(); // Copu to pop since pending will be the ones not selected to move
+    // // Classify each node probablistically
+    // function classify() {
+    //   // Title
+    //   var seek = svg.append('text')
+    //     .attr('transform', 'translate(475, 190)')
+    //     .style('text-anchor', 'middle')
+    //     .style('fill', 'black')
+    //     .attr('dy', '-2.5em')
+    //     .style('font-size', 20)
+    //     .style('font-family',"garamond")
+    //     .style('font-weight','bold')
+    //     .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year); 
+    //   
+    // if (pending.length > (n - (recognized + rejected + other))) {
+    //     var random = Math.random() * n; 
         
-        if (random < recognized) {
-          let node = pending.pop();
-          node.cluster = clusters["recognized"];
-
-        } else if (random < recognized + rejected) {
-          let node = pending.pop();
-          node.cluster = clusters["rejected"];
-
-        } else if (random < recognized + rejected + other) {
-          let node = pending.pop();
-          node.cluster = clusters["other"];
-        } 
-      }
+    //     if (random < recognized) {
+    //       let node = pending.pop();
+    //       node.cluster = clusters["recognized"];
+    //     } else if (random < recognized + rejected) {
+    //       let node = pending.pop();
+    //       node.cluster = clusters["rejected"];
+    //     } else if (random < recognized + rejected + other) {
+    //       let node = pending.pop();
+    //       node.cluster = clusters["other"];
+    //     } 
+    //   }
       
-      simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
-      setTimeout(classify, 100);  // Call itself again .1 second later
-    } 
-
-    setTimeout(classify, 1000);
-
+    //   simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+    //   setTimeout(classify, 100);  // Call itself again .1 second later
+    // } 
+    // setTimeout(classify, 1000);
     });
-
-
+  
   </script>
