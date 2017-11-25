@@ -39,6 +39,8 @@
     var rejected = Math.round(dataset[0].Rejected / 1000);
     var other = Math.round(dataset[0].Other / 1000);
     
+
+
     function classify(id) {
         if (id <= recognized) {
             return 'recognized';
@@ -51,16 +53,22 @@
         };
     } 
 
+    var toBeClassed = [];
+
     //Create nodes
     var nodes = d3.range(n).map(function(id) {
-        var cluster = classify(id)
+        var classifiedCluster = classify(id)
         var d = {
             id: id,
-            cluster: clusters[cluster],
-            x: clusters[cluster].x + Math.random(),
-            y: clusters[cluster].y + Math.random(),
+            classifiedCluster: clusters[classifiedCluster],
+            cluster: clusters['pending'],
+            x: clusters['pending'].x + Math.random(),
+            y: clusters['pending'].y + Math.random(),
             radius: radius
         };
+        if (classifiedCluster !== 'pending') {
+        	toBeClassed.push(d);
+        }
         return d;
     });
 
@@ -108,6 +116,20 @@
 
       u.exit().remove();
     }
+
+function run() {
+
+	if (toBeClassed.length > 0) {
+    	var node = toBeClassed.pop();
+    	node.cluster = node.classifiedCluster;
+    }
+      
+      simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+      setTimeout(run, 100);  // Call itself again .1 second later
+} 	
+
+    setTimeout(run, 1000);
+
 
 
     // // Add the nodes
@@ -173,37 +195,8 @@
     // }
     // var pending = nodes.slice(); // Copu to pop since pending will be the ones not selected to move
     // // Classify each node probablistically
-    // function classify() {
-    //   // Title
-    //   var seek = svg.append('text')
-    //     .attr('transform', 'translate(475, 190)')
-    //     .style('text-anchor', 'middle')
-    //     .style('fill', 'black')
-    //     .attr('dy', '-2.5em')
-    //     .style('font-size', 20)
-    //     .style('font-family',"garamond")
-    //     .style('font-weight','bold')
-    //     .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year); 
-    //   
-    // if (pending.length > (n - (recognized + rejected + other))) {
-    //     var random = Math.random() * n; 
-        
-    //     if (random < recognized) {
-    //       let node = pending.pop();
-    //       node.cluster = clusters["recognized"];
-    //     } else if (random < recognized + rejected) {
-    //       let node = pending.pop();
-    //       node.cluster = clusters["rejected"];
-    //     } else if (random < recognized + rejected + other) {
-    //       let node = pending.pop();
-    //       node.cluster = clusters["other"];
-    //     } 
-    //   }
-      
-    //   simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
-    //   setTimeout(classify, 100);  // Call itself again .1 second later
-    // } 
-    // setTimeout(classify, 1000);
+    // 
+
     });
   
   </script>
