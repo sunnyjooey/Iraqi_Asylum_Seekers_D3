@@ -25,54 +25,60 @@
             console.log(data);
         }
 
+        // Global vars
         var margin = { top: 10, right: 10, bottom: 10, left: 10 },
             width = 1000 - margin.left - margin.right,
             height = 1000 - margin.top - margin.bottom;
-
-        var radius = 2;
 
         var center = {
             x: width /2,
             y: height /2
         };
 
+        var radius = 2;
         var initialCenterClusterRadius = 30;
+        var destinationClusterRingRadius = 250;
 
         var results = {
             "seekers": { x: center.x, y: center.y, color: "#283747" },
-            "recognized": { x: 225, y: 500, color: "#1E8449" },
-            "rejected": { x: 525, y: 500, color: "#E74C3C" },
-            "other": { x: 725, y: 500, color: "#5DADE2" }
+            "recognized": { color: "#1E8449" },
+            "rejected": { color: "#E74C3C" },
+            "other": { color: "#5DADE2" }
         };
 
-        var destinationClusterRingRadius = 200;
+        // Create svg
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .attr("fill", function (d) {
+                return '#abcdef';
+            })
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        function convertCoordX(x) {
-            return Math.cos((x) * (Math.PI / 180)) * destinationClusterRingRadius;
-        }
-
-        function convertCoordY(y) {
-            return Math.sin((y) * (Math.PI / 180)) * destinationClusterRingRadius;
-        }
 
         // Create destination ring around the center with angles -> radians -> coordinates
-        // converstion tip: https://www.engineeringtoolbox.com/converting-cartesian-polar-coordinates-d_1347.html
         var destinationClusters = {
-            "Sweden": { x: convertCoordX(90 + 40), 
-                        y: convertCoordY(90 + 40) },
-            "Germany": { x: convertCoordX(90 + 80), 
-                        y: convertCoordY(90 + 80) },
-            "Jordan": { x: convertCoordX(90 - 40), 
-                        y: convertCoordY(90 - 40) },
-            "Turkey": { x: convertCoordX(90 - 80), 
-                        y: convertCoordY(90 - 80) },
-            "US": { x: convertCoordX(270 - 40), 
-                        y: convertCoordY(270 - 40) },
-            "Canada": { x: convertCoordX(270 + 40), 
-                        y: convertCoordY(270 + 40) },
-            "World-Elsewhere": { x: convertCoordX(270), 
-                        y: convertCoordY(270) },
+            "Sweden": { theta: 270 - 40},
+            "Germany": { theta: 270 - 80 },
+
+            "Jordan": { theta: 270 + 40 },
+            "Turkey": { theta: 270 + 80 },
+
+            "US": { theta: 90 + 30 },
+            "Canada": { theta: 90 - 30 },
+            "World-Elsewhere": { theta: 90 }
         };
+
+        Object.keys(destinationClusters).forEach(function (key) {
+            var cluster = destinationClusters[key];
+            var radianTheta = (2 * Math.PI) * (cluster.theta / 360);
+            cluster.x = destinationClusterRingRadius * Math.cos(radianTheta) + center.x;
+            cluster.y = destinationClusterRingRadius * Math.sin(radianTheta) + center.y;
+
+            // Create destination label
+            createText(key, cluster.x, cluster.y - 25);
+        });
 
         // Preclassify where each node is to go
         function classify(id, destinationClusters) {
@@ -139,20 +145,27 @@
             return array;
         }
 
-    console.log(nodes)
+        // Create texts
+        createText("Seekers", center.x, center.y - 25);
+                
+        function createText(text, x, y) {
+            var translate = 'translate(' + x + ', ' + y + ')';
+            var text = svg.append('text')
+                .attr('transform', translate)
+                .style('text-anchor', 'middle')
+                .style('fill', 'black')
+                .attr('dy', '-2.5em')
+                .style('font-size', 10)
+                .style('font-family', "garamond")
+                .style('font-weight', 'bold')
+                .text(text);
+            return text;
+        }
+
 
     });
         
-    //     // Create svg
-    //     var svg = d3.select("body").append("svg")
-    //         .attr("width", width + margin.left + margin.right)
-    //         .attr("height", height + margin.top + margin.bottom)
-    //         .attr("fill", function (d) {
-    //             return '#abcdef';
-    //         })
-    //         .append("g")
-    //         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
+        
 
     //     // Add the nodes
     //     var circle = svg.selectAll("circle")
