@@ -12,10 +12,10 @@
 <body>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
-    /* code based on various internet sources, including:
-    https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
-    https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
-    */
+    // code based on various internet sources, including:
+    // https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
+    // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
+
     d3.json("irq_13_js.json", function (error, data) {
         var dataset;
         if (error) {
@@ -36,6 +36,15 @@
             y: height /2
         };
 
+        var initialCenterClusterRadius = 30;
+
+        var results = {
+            "seekers": { x: center.x, y: center.y, color: "#283747" },
+            "recognized": { x: 225, y: 500, color: "#1E8449" },
+            "rejected": { x: 525, y: 500, color: "#E74C3C" },
+            "other": { x: 725, y: 500, color: "#5DADE2" }
+        };
+
         var destinationClusterRingRadius = 200;
 
         function convertCoordX(x) {
@@ -46,7 +55,7 @@
             return Math.sin((y) * (Math.PI / 180)) * destinationClusterRingRadius;
         }
 
-        // Create destination ring around the center with angles -> radian -> coordinates
+        // Create destination ring around the center with angles -> radians -> coordinates
         // converstion tip: https://www.engineeringtoolbox.com/converting-cartesian-polar-coordinates-d_1347.html
         var destinationClusters = {
             "Sweden": { x: convertCoordX(90 + 40), 
@@ -65,56 +74,75 @@
                         y: convertCoordY(270) },
         };
 
-        console.log(destinationClusters)
+        // Preclassify where each node is to go
+        function classify(id, destinationClusters) {
+            var recognized = destinationClusters.recognized;
+            var rejected = destinationClusters.rejected;
+            var other = destinationClusters.other;
+
+            if (id <= recognized) {
+                return 'recognized';
+            } else if (id > recognized && id <= recognized + rejected) {
+                return 'rejected';
+            } else if (id > recognized + rejected && id <= recognized + rejected + other) {
+                return 'other';
+            } else {
+                return 'seekers';
+            }
+        }
+
+        var nodes = [];
+
+        // Create nodes based on the dataset
+        dataset.forEach(function (d) {
+            var destinationCluster = destinationClusters[d.Destination];
+
+            // Calculate number of nodes for each classification of the cluster.
+            destinationCluster.total = Math.round(d.Total_apps / 1000);
+            destinationCluster.recognized = Math.round(d.Recognized / 1000);
+            destinationCluster.rejected = Math.round(d.Rejected / 1000);
+            destinationCluster.other = Math.round(d.Other / 1000);
+
+            // Create nodes for this destination
+            d3.range(destinationCluster.total).map(function (id) {
+                var node = {
+                    id: d.Destination + id,
+                    // Randomize distribution around the center 
+                    x: center.x + (initialCenterClusterRadius * (Math.random() * 2 -1)),
+                    y: center.y + (initialCenterClusterRadius * (Math.random() * 2 -1)),
+                    radius: radius,
+                    destinationCluster: destinationCluster,
+                    // Classify the nodes in this destination
+                    classification: classify(id, destinationClusters),
+                    color: results.seekers.color
+                };
+                nodes.push(node);
+            });   
+        }); 
+
+        // So that the nodes move randomly  
+        nodes = shuffle(nodes);
+
+        // function from: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+        function shuffle(array) {
+            var currentIndex = array.length, temporaryValue, randomIndex;
+            // While there remain elements to shuffle...
+            while (0 !== currentIndex) {
+                // Pick a remaining element...
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex -= 1;
+                // And swap it with the current element.
+                temporaryValue = array[currentIndex];
+                array[currentIndex] = array[randomIndex];
+                array[randomIndex] = temporaryValue;
+            }
+            return array;
+        }
+
+    console.log(nodes)
+
     });
-
-        // Foci: where the nodes will go and their color
-        // var clusters = {
-        //     "seekers": { x: center.x, y: center.y, color: "#283747" },
-        //     "recognized": { x: 225, y: 500, color: "#1E8449" },
-        //     "rejected": { x: 525, y: 500, color: "#E74C3C" },
-        //     "other": { x: 725, y: 500, color: "#5DADE2" },
-        // };
-
-
-    //     // Nodes for each group
-    //     var n = Math.round(dataset[0].Total_apps / 1000); // total number of circles
-    //     var recognized = Math.round(dataset[0].Recognized / 1000);
-    //     var rejected = Math.round(dataset[0].Rejected / 1000);
-    //     var other = Math.round(dataset[0].Other / 1000);
-
-    //     // to precode where each node is to go
-    //     function preClassify(id) {
-    //         if (id <= recognized) {
-    //             return 'recognized';
-    //         } else if (id > recognized && id <= recognized + rejected) {
-    //             return 'rejected';
-    //         } else if (id > recognized + rejected && id <= recognized + rejected + other) {
-    //             return 'other';
-    //         } else {
-    //             return 'seekers';
-    //         }
-    //     }
-
-    //     // Create nodes
-    //     var nodes = d3.range(n).map(function (id) {
-    //         var cluster = clusters["seekers"];  //everyone starts out as seekers
-    //         var futureCluster = clusters[preClassify(id)];
-    //         var node = {
-    //             id: id,
-    //             cluster: cluster,
-    //             futureCluster: futureCluster,
-    //             x: cluster.x + Math.random(),
-    //             y: cluster.y + Math.random(),
-    //             radius: radius
-    //         };
-    //         return node;
-    //     });
-
-
-    //     // So that the nodes' categories are shuffled 
-    //     nodes = shuffle(nodes);
-
+        
     //     // Create svg
     //     var svg = d3.select("body").append("svg")
     //         .attr("width", width + margin.left + margin.right)
@@ -235,22 +263,6 @@
 
     //     setTimeout(classify, 1000);
     // });
-
-
-    // // from https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-    // function shuffle(array) {
-    //     var currentIndex = array.length, temporaryValue, randomIndex;
-    //     // While there remain elements to shuffle...
-    //     while (0 !== currentIndex) {
-    //         // Pick a remaining element...
-    //         randomIndex = Math.floor(Math.random() * currentIndex);
-    //         currentIndex -= 1;
-    //         // And swap it with the current element.
-    //         temporaryValue = array[currentIndex];
-    //         array[currentIndex] = array[randomIndex];
-    //         array[randomIndex] = temporaryValue;
-    //     }
-    //     return array;
 
     // }
 
