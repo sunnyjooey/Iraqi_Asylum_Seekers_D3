@@ -59,15 +59,15 @@
 
         // Create destination ring around the center with angles -> radians -> coordinates
         var destinationClusters = {
-            "Sweden": { theta: 270 - 40},
-            "Germany": { theta: 270 - 80 },
+            "Sweden": { theta: 270 - 40, color: "#ffc3a0"},
+            "Germany": { theta: 270 - 80, color: "#ff4444" },
 
-            "Jordan": { theta: 270 + 40 },
-            "Turkey": { theta: 270 + 80 },
+            "Jordan": { theta: 270 + 40, color: "#ffb14c" },
+            "Turkey": { theta: 270 + 80, color: "#ff9000" },
 
-            "US": { theta: 90 + 30 },
-            "Canada": { theta: 90 - 30 },
-            "World-Elsewhere": { theta: 90 }
+            "US": { theta: 90 + 30, color: "#ad4b25" },
+            "Canada": { theta: 90 - 30, color: "#ad8f25" },
+            "World-Elsewhere": { theta: 90, color: "#7161ef" }
         };
 
         Object.keys(destinationClusters).forEach(function (key) {
@@ -80,6 +80,8 @@
             createText(key, cluster.x, cluster.y - 25);
         });
 
+        console.log(destinationClusters)
+        
         // Preclassify where each node is to go
         function classify(id, destinationClusters) {
             var recognized = destinationClusters.recognized;
@@ -120,11 +122,14 @@
                     destinationCluster: destinationCluster,
                     // Classify the nodes in this destination
                     classification: classify(id, destinationClusters),
-                    color: results.seekers.color
+                    color: results.seekers.color,
+                    status: 'seeker'
                 };
                 nodes.push(node);
             });   
         }); 
+
+        console.log(nodes)
 
         // So that the nodes move randomly  
         nodes = shuffle(nodes);
@@ -162,35 +167,76 @@
             return text;
         }
 
+        // Add the nodes
+        var circle = svg.selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("r", function (d) {
+                return d.radius;
+            })
+            .style("fill", function (d) {
+                return d.color;
+            });
 
+        // Prevent collisions between nodes
+        var forceCollide = d3.forceCollide()
+            .radius(function (d) {
+                return d.radius + 2;
+            });
+
+        // Force-directed layout
+        var simulation = d3.forceSimulation(nodes)
+            .force("collide", forceCollide)
+            .force("cluster", forceCluster)
+            .on("tick", tick);
+
+        // Update frame of animation: redraw in the new position in new color with each tick
+        function tick() {
+            circle
+                .attr("cx", function (d) {
+                    return d.x;
+                })
+                .attr("cy", function (d) {
+                    return d.y;
+                })
+                .style("fill", function (d) {
+                    return d.color;
+                });
+        }
+
+        // Change the x, y velocity for each node
+        function forceCluster(alpha) {
+            for (var i = 0; i < nodes.length; ++i) {
+                var node = nodes[i]
+                var target;
+                if (node.status === 'seeker') {
+                    target = center;
+                } else if (node.status === 'pending') {
+                    target = node.destinationCluster;
+                } else if (node.status === 'classified') {
+                    target = node.destinationCluster;
+                }
+                node.vx -= (node.x - target.x) * alpha;
+                node.vy -= (node.y - target.y) * alpha;
+            }
+        }
+
+        var centerSeekers = nodes.slice(); // Copy to pop since pending will be the ones not selected to move
+
+        function goToDestination() {
+            if (centerSeekers.length > 0) {
+                var node = centerSeekers.pop();
+                node.status = 'pending';
+                node.color = node.destinationCluster.color;
+            }
+            simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+            setTimeout(goToDestination, 100);  // Call itself again .1 second later
+        }
+
+        setTimeout(goToDestination, 1000);
     });
-        
-        
-
-    //     // Add the nodes
-    //     var circle = svg.selectAll("circle")
-    //         .data(nodes)
-    //         .enter().append("circle")
-    //         .attr("r", function (d) {
-    //             return d.radius;
-    //         })
-    //         .style("fill", function (d) {
-    //             return d.cluster.color;
-    //         });
 
 
-    //     // Prevent collisions between nodes
-    //     var forceCollide = d3.forceCollide()
-    //         .radius(function (d) {
-    //             return d.radius + 2;
-    //         });
-
-
-    //     // Force-directed layout
-    //     var simulation = d3.forceSimulation(nodes)
-    //         .force("collide", forceCollide)
-    //         .force("cluster", forceCluster)
-    //         .on("tick", tick);
 
     //     // Titles
     //     var seek = svg.append('text')
@@ -239,44 +285,7 @@
     //         .style('font-family', "garamond")
     //         .text('* Each dot represents 1000 asylum seekers');
 
-    //     // Update frame of animation: redraw in the new position in new color with each tick
-    //     function tick() {
-    //         circle
-    //             .attr("cx", function (d) {
-    //                 return d.x;
-    //             })
-    //             .attr("cy", function (d) {
-    //                 return d.y;
-    //             })
-    //             .style("fill", function (d) {
-    //                 return d.cluster.color;
-    //             });
-    //     }
-
-
-    //     // Change the x, y velocity for each node
-    //     function forceCluster(alpha) {
-    //         for (var i = 0; i < nodes.length; ++i) {
-    //             var node = nodes[i];
-    //             node.vx -= (node.x - node.cluster.x) * alpha;
-    //             node.vy -= (node.y - node.cluster.y) * alpha;
-    //         }
-    //     }
-
-    //     var pending = nodes.slice(); // Copu to pop since pending will be the ones not selected to move
-
-    //     function classify() {
-    //         if (pending.length > 0) {
-    //             var node = pending.pop();
-    //             node.cluster = node.futureCluster;
-    //         }
-    //         simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
-    //         setTimeout(classify, 100);  // Call itself again .1 second later
-    //     }
-
-    //     setTimeout(classify, 1000);
-    // });
-
+    //     
     // }
 
 
