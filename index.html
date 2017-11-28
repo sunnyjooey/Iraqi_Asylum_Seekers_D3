@@ -16,7 +16,7 @@
     // https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
     // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
 
-    d3.json("irq_13_js.json", function (error, data) {
+    d3.json("irq_14_js.json", function (error, data) {
         var dataset;
         if (error) {
             console.log(error);
@@ -35,24 +35,20 @@
             y: height /2
         };
 
-        var radius = 2;
+        var radius = 3;
         var initialCenterClusterRadius = 30;
         var destinationClusterRingRadius = 250;
 
         var results = {
-            "seekers": { x: center.x, y: center.y, color: "#283747" },
-            "recognized": { color: "#1E8449" },
-            "rejected": { color: "#E74C3C" },
-            "other": { color: "#5DADE2" }
+            "recognized": { x: 0, y: 0, color: "#1E8449" },
+            "rejected": { x: 0, y: 0, color: "#E74C3C" },
+            "other": { x: 0, y: 0, color: "#5DADE2" }
         };
 
         // Create svg
         var svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
-            .attr("fill", function (d) {
-                return '#abcdef';
-            })
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -65,8 +61,8 @@
             "Jordan": { theta: 270 + 40, color: "#ffb14c" },
             "Turkey": { theta: 270 + 80, color: "#ff9000" },
 
-            "US": { theta: 90 + 30, color: "#ad4b25" },
-            "Canada": { theta: 90 - 30, color: "#ad8f25" },
+            "US": { theta: 90 + 40, color: "#ad4b25" },
+            "Canada": { theta: 90 - 40, color: "#ad8f25" },
             "World-Elsewhere": { theta: 90, color: "#7161ef" }
         };
 
@@ -77,7 +73,7 @@
             cluster.y = destinationClusterRingRadius * Math.sin(radianTheta) + center.y;
 
             // Create destination label
-            createText(key, cluster.x, cluster.y - 25);
+            createText(key, cluster.x, cluster.y - 15);
         });
 
         console.log(destinationClusters)
@@ -94,12 +90,13 @@
                 return 'rejected';
             } else if (id > recognized + rejected && id <= recognized + rejected + other) {
                 return 'other';
-            } else {
-                return 'seekers';
             }
         }
 
+
         var nodes = [];
+        var centerSeekers = [];
+        var pendings = [];
 
         // Create nodes based on the dataset
         dataset.forEach(function (d) {
@@ -121,18 +118,20 @@
                     radius: radius,
                     destinationCluster: destinationCluster,
                     // Classify the nodes in this destination
-                    classification: classify(id, destinationClusters),
-                    color: results.seekers.color,
-                    status: 'seeker'
+                    classification: classify(id, destinationCluster),
+                    color: "#283747"
                 };
                 nodes.push(node);
+                centerSeekers.push(node);
             });   
         }); 
 
         console.log(nodes)
 
         // So that the nodes move randomly  
-        nodes = shuffle(nodes);
+        centerSeekers = shuffle(centerSeekers);
+
+        console.log(centerSeekers)
 
         // function from: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
         function shuffle(array) {
@@ -148,23 +147,6 @@
                 array[randomIndex] = temporaryValue;
             }
             return array;
-        }
-
-        // Create texts
-        createText("Seekers", center.x, center.y - 25);
-                
-        function createText(text, x, y) {
-            var translate = 'translate(' + x + ', ' + y + ')';
-            var text = svg.append('text')
-                .attr('transform', translate)
-                .style('text-anchor', 'middle')
-                .style('fill', 'black')
-                .attr('dy', '-2.5em')
-                .style('font-size', 10)
-                .style('font-family', "garamond")
-                .style('font-weight', 'bold')
-                .text(text);
-            return text;
         }
 
         // Add the nodes
@@ -208,85 +190,84 @@
         function forceCluster(alpha) {
             for (var i = 0; i < nodes.length; ++i) {
                 var node = nodes[i]
-                var target;
-                if (node.status === 'seeker') {
-                    target = center;
-                } else if (node.status === 'pending') {
-                    target = node.destinationCluster;
-                } else if (node.status === 'classified') {
-                    target = node.destinationCluster;
-                }
+                var target = node.target || center;
                 node.vx -= (node.x - target.x) * alpha;
                 node.vy -= (node.y - target.y) * alpha;
             }
         }
 
-        var centerSeekers = nodes.slice(); // Copy to pop since pending will be the ones not selected to move
-
         function goToDestination() {
             if (centerSeekers.length > 0) {
                 var node = centerSeekers.pop();
-                node.status = 'pending';
-                node.color = node.destinationCluster.color;
+                node.color = node.destinationCluster.color;                
+                node.target = node.destinationCluster;
+                pendings.push(node) 
+
+                simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+                setTimeout(goToDestination, 100);  // Call itself again .1 second later
+            } else {
+                setTimeout(classifyPendings, 1000); // Once all at destination (as pending), classify into results category
             }
-            simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
-            setTimeout(goToDestination, 100);  // Call itself again .1 second later
         }
 
         setTimeout(goToDestination, 1000);
+
+        // Next level of classification into results groups
+        function classifyPendings() {
+            if (pendings.length > 0) {
+                var node = pendings.pop();
+                var classification = results[node.classification];
+
+                if (classification) {
+                    node.color = results[node.classification].color;
+
+                    // Clone the current target
+                    node.target = { x: node.target.x, y: node.target.y };
+
+                    var classificationOffset = 75;
+
+                    // Assign new locations relative to the current destination's center depending on the classification.
+                    if (node.classification === 'recognized') {
+                        node.target = {x: node.target.x - classificationOffset, y: node.target.y + classificationOffset}
+                    } else if (node.classification === 'rejected') {
+                        node.target = {x: node.target.x + classificationOffset, y: node.target.y + classificationOffset}
+                    } else {
+                        node.target = {x: node.target.x, y: node.target.y + classificationOffset}
+                    }
+                }
+
+                simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
+                setTimeout(classifyPendings, 100);  // Call itself again .1 second later
+            } else {
+                var keepAlive = setInterval(function () {
+                    simulation.alpha(0.015);
+                }, 100);
+
+                // Keep the nodes moving for another 5 seconds
+                setTimeout(function () {
+                    clearInterval(keepAlive);
+                }, 5000);
+            }
+        }
+
+        // Create texts
+        createText("Seekers", center.x, center.y - 20);
+        createText('* Each dot represents 1000 asylum seekers', width/2, height - 50)
+                
+        function createText(text, x, y) {
+            var translate = 'translate(' + x + ', ' + y + ')';
+            var text = svg.append('text')
+                .attr('transform', translate)
+                .style('text-anchor', 'middle')
+                .style('fill', 'black')
+                .attr('dy', '-2.5em')
+                .style('font-size', 15)
+                .style('font-family', "garamond")
+                .style('font-weight', 'bold')
+                .text(text);
+            return text;
+        }
+
     });
-
-
-
-    //     // Titles
-    //     var seek = svg.append('text')
-    //         .attr('transform', 'translate(475, 190)')
-    //         .style('text-anchor', 'middle')
-    //         .style('fill', 'black')
-    //         .attr('dy', '-2.5em')
-    //         .style('font-size', 20)
-    //         .style('font-family', "garamond")
-    //         .style('font-weight', 'bold')
-    //         .text('Number of Iraqi Asylum Seekers to ' + dataset[0].Destination + ' in ' + dataset[0].Year);
-
-    //     var recognize = svg.append('text')
-    //         .attr('transform', 'translate(225, 630)')
-    //         .style('text-anchor', 'middle')
-    //         .style('fill', 'black')
-    //         .attr('dy', '-2.5em')
-    //         .style('font-size', 20)
-    //         .style('font-family', "garamond")
-    //         .text('Recognized');
-
-    //     var reject = svg.append('text')
-    //         .attr('transform', 'translate(525, 630)')
-    //         .style('text-anchor', 'middle')
-    //         .style('fill', 'black')
-    //         .attr('dy', '-2.5em')
-    //         .style('font-size', 20)
-    //         .style('font-family', "garamond")
-    //         .text('Rejected');
-
-    //     var other = svg.append('text')
-    //         .attr('transform', 'translate(725,  630)')
-    //         .style('text-anchor', 'middle')
-    //         .style('fill', 'black')
-    //         .attr('dy', '-2.5em')
-    //         .style('font-size', 20)
-    //         .style('font-family', "garamond")
-    //         .text('Other outcome');
-
-    //     var ast = svg.append('text')
-    //         .attr('transform', 'translate(' + width / 2 + ', 675)')
-    //         .style('text-anchor', 'middle')
-    //         .style('fill', 'black')
-    //         .attr('dy', '-2.5em')
-    //         .style('font-size', 15)
-    //         .style('font-family', "garamond")
-    //         .text('* Each dot represents 1000 asylum seekers');
-
-    //     
-    // }
-
 
 </script>
