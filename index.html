@@ -55,11 +55,11 @@
 
         // Create destination ring around the center with angles -> radians -> coordinates
         var destinationClusters = {
-            "Sweden": { theta: 270 - 40, color: "#ffc3a0"},
-            "Germany": { theta: 270 - 80, color: "#ff4444" },
+            "Sweden": { theta: - 150 - 30, color: "#ffc3a0"},
+            "Germany": { theta: -150 + 30, color: "#ff4444" },
 
-            "Jordan": { theta: 270 + 40, color: "#ffb14c" },
-            "Turkey": { theta: 270 + 80, color: "#ff9000" },
+            "Jordan": { theta: - 30 - 30, color: "#ffb14c" },
+            "Turkey": { theta: - 30 + 30, color: "#ff9000" },
 
             "US": { theta: 90 + 40, color: "#ad4b25" },
             "Canada": { theta: 90 - 40, color: "#ad8f25" },
@@ -68,7 +68,7 @@
 
         Object.keys(destinationClusters).forEach(function (key) {
             var cluster = destinationClusters[key];
-            var radianTheta = (2 * Math.PI) * (cluster.theta / 360);
+            var radianTheta = (Math.PI / 180) * cluster.theta ;
             cluster.x = destinationClusterRingRadius * Math.cos(radianTheta) + center.x;
             cluster.y = destinationClusterRingRadius * Math.sin(radianTheta) + center.y;
 
@@ -224,17 +224,28 @@
                     // Clone the current target
                     node.target = { x: node.target.x, y: node.target.y };
 
-                    var classificationOffset = 75;
+                    var classificationOffset = 125;
 
                     // Assign new locations relative to the current destination's center depending on the classification.
                     if (node.classification === 'recognized') {
-                        node.target = {x: node.target.x - classificationOffset, y: node.target.y + classificationOffset}
+                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta - 10);
+                        node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
+                            y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     } else if (node.classification === 'rejected') {
-                        node.target = {x: node.target.x + classificationOffset, y: node.target.y + classificationOffset}
+                        var radianTheta = (Math.PI / 180) * node.destinationCluster.theta;
+                        node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
+                            y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     } else {
-                        node.target = {x: node.target.x, y: node.target.y + classificationOffset}
+                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta + 10);
+                        node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
+                            y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     }
                 }
+
+
+            
+
+
 
                 simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
                 setTimeout(classifyPendings, 100);  // Call itself again .1 second later
@@ -252,7 +263,7 @@
 
         // Create texts
         createText("Seekers", center.x, center.y - 20);
-        createText('* Each dot represents 1000 asylum seekers', width/2, height - 50)
+        createText('* Each dot represents 1000 asylum seekers', width/2, height - 30)
                 
         function createText(text, x, y) {
             var translate = 'translate(' + x + ', ' + y + ')';
