@@ -16,7 +16,7 @@
     // https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
     // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
 
-    d3.json("irq_14_js.json", function (error, data) {
+    d3.json("irq_16_js.json", function (error, data) {
         var dataset;
         if (error) {
             console.log(error);
@@ -241,11 +241,6 @@
                             y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     }
                 }
-
-
-            
-
-
 
                 simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
                 setTimeout(classifyPendings, 100);  // Call itself again .1 second later
