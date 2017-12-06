@@ -88,16 +88,16 @@
         }
     }
 
+    var nodes = [];
+    var centerSeekers = [];
+    var pendings = [];
+    var simulation;
+    var circle;
+
     // Master function
     run(['irq_13_js.json', 'irq_14_js.json', 'irq_15_js.json', 'irq_16_js.json']);
 
     function run(filenames) {
-
-        var nodes = [];
-        var centerSeekers = [];
-        var pendings = [];
-        var simulation;
-        var circle;
 
         addData(filenames.shift());
 
