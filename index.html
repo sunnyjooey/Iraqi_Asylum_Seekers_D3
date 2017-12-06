@@ -16,42 +16,28 @@
     // https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
     // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
 
-    d3.json("irq_16_js.json", function (error, data) {
-        var dataset;
-        if (error) {
-            console.log(error);
-        } else {
-            dataset = data;
-            console.log(data);
-        }
+    run();
+
+    function run() {
 
         // Global vars
         var margin = { top: 10, right: 10, bottom: 10, left: 10 },
             width = 1000 - margin.left - margin.right,
             height = 1000 - margin.top - margin.bottom;
 
+        var radius = 3;
         var center = {
             x: width /2,
             y: height /2
         };
 
-        var radius = 3;
         var initialCenterClusterRadius = 30;
-        var destinationClusterRingRadius = 250;
 
         var results = {
             "recognized": { x: 0, y: 0, color: "#1E8449" },
             "rejected": { x: 0, y: 0, color: "#E74C3C" },
             "other": { x: 0, y: 0, color: "#5DADE2" }
         };
-
-        // Create svg
-        var svg = d3.select("body").append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
 
         // Create destination ring around the center with angles -> radians -> coordinates
         var destinationClusters = {
@@ -65,6 +51,19 @@
             "Canada": { theta: 90 - 40, color: "#ad8f25" },
             "World-Elsewhere": { theta: 90, color: "#7161ef" }
         };
+
+        // Create svg
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // Create texts
+        createText("Seekers", center.x, center.y - 20);
+        createText('* Each dot represents 1000 asylum seekers', width/2, height - 30)
+
+        var destinationClusterRingRadius = 250;
 
         Object.keys(destinationClusters).forEach(function (key) {
             var cluster = destinationClusters[key];
@@ -93,72 +92,79 @@
             }
         }
 
+        addData('irq_16_js.json');
 
-        var nodes = [];
-        var centerSeekers = [];
-        var pendings = [];
+        function addData(filename) {
+            d3.json(filename, function (error, data) {
+            var dataset;
+            if (error) {
+                console.log(error);
+                } else {
+                    dataset = data;
+                    console.log(data);
+                }
 
-        // Create nodes based on the dataset
-        dataset.forEach(function (d) {
-            var destinationCluster = destinationClusters[d.Destination];
+                // Create nodes based on the dataset
+                dataset.forEach(function (d) {
+                    var destinationCluster = destinationClusters[d.Destination];
 
-            // Calculate number of nodes for each classification of the cluster.
-            destinationCluster.total = Math.round(d.Total_apps / 1000);
-            destinationCluster.recognized = Math.round(d.Recognized / 1000);
-            destinationCluster.rejected = Math.round(d.Rejected / 1000);
-            destinationCluster.other = Math.round(d.Other / 1000);
+                    // Calculate number of nodes for each classification of the cluster.
+                    destinationCluster.total = Math.round(d.Total_apps / 1000);
+                    destinationCluster.recognized = Math.round(d.Recognized / 1000);
+                    destinationCluster.rejected = Math.round(d.Rejected / 1000);
+                    destinationCluster.other = Math.round(d.Other / 1000);
 
-            // Create nodes for this destination
-            d3.range(destinationCluster.total).map(function (id) {
-                var node = {
-                    id: d.Destination + id,
-                    // Randomize distribution around the center 
-                    x: center.x + (initialCenterClusterRadius * (Math.random() * 2 -1)),
-                    y: center.y + (initialCenterClusterRadius * (Math.random() * 2 -1)),
-                    radius: radius,
-                    destinationCluster: destinationCluster,
-                    // Classify the nodes in this destination
-                    classification: classify(id, destinationCluster),
-                    color: "#283747"
-                };
-                nodes.push(node);
-                centerSeekers.push(node);
-            });   
-        }); 
+                    // Create nodes for this destination
+                    d3.range(destinationCluster.total).map(function (id) {
+                        var node = {
+                            id: d.Destination + id,
+                            // Randomize distribution around the center 
+                            x: center.x + (initialCenterClusterRadius * (Math.random() * 2 -1)),
+                            y: center.y + (initialCenterClusterRadius * (Math.random() * 2 -1)),
+                            radius: radius,
+                            destinationCluster: destinationCluster,
+                            // Classify the nodes in this destination
+                            classification: classify(id, destinationCluster),
+                            color: "#283747"
+                        };
+                        centerSeekers.push(node);
+                    });   
+                }); 
 
-        console.log(nodes)
+                // So that the nodes move randomly  
+                centerSeekers = shuffle(centerSeekers);
+                nodes = nodes.concat(centerSeekers);
 
-        // So that the nodes move randomly  
-        centerSeekers = shuffle(centerSeekers);
+                console.log(centerSeekers)
+                console.log(nodes)
 
-        console.log(centerSeekers)
+                // Add the nodes
+                circle = svg.selectAll("circle")
+                    .data(nodes)
+                    .enter().append("circle")
+                    .attr("r", function (d) {
+                        return d.radius;
+                    })
+                    .style("fill", function (d) {
+                        return d.color;
+                    });
 
-        // function from: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-        function shuffle(array) {
-            var currentIndex = array.length, temporaryValue, randomIndex;
-            // While there remain elements to shuffle...
-            while (0 !== currentIndex) {
-                // Pick a remaining element...
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex -= 1;
-                // And swap it with the current element.
-                temporaryValue = array[currentIndex];
-                array[currentIndex] = array[randomIndex];
-                array[randomIndex] = temporaryValue;
-            }
-            return array;
+                // Force-directed layout
+                simulation = d3.forceSimulation(nodes)
+                    .force("collide", forceCollide)
+                    .force("cluster", forceCluster)
+                    .on("tick", tick);
+
+                setTimeout(goToDestination, 1000);
+            });
         }
 
-        // Add the nodes
-        var circle = svg.selectAll("circle")
-            .data(nodes)
-            .enter().append("circle")
-            .attr("r", function (d) {
-                return d.radius;
-            })
-            .style("fill", function (d) {
-                return d.color;
-            });
+        var nodes = [],
+            centerSeekers = [],
+            pendings = [];
+
+        var simulation;
+        var circle;
 
         // Prevent collisions between nodes
         var forceCollide = d3.forceCollide()
@@ -166,14 +172,23 @@
                 return d.radius + 2;
             });
 
-        // Force-directed layout
-        var simulation = d3.forceSimulation(nodes)
-            .force("collide", forceCollide)
-            .force("cluster", forceCluster)
-            .on("tick", tick);
+        function createText(text, x, y) {
+            var translate = 'translate(' + x + ', ' + y + ')';
+            var text = svg.append('text')
+                .attr('transform', translate)
+                .style('text-anchor', 'middle')
+                .style('fill', 'black')
+                .attr('dy', '-2.5em')
+                .style('font-size', 15)
+                .style('font-family', "garamond")
+                .style('font-weight', 'bold')
+                .text(text);
+            return text;
+        }
 
         // Update frame of animation: redraw in the new position in new color with each tick
         function tick() {
+            if (!circle) return;
             circle
                 .attr("cx", function (d) {
                     return d.x;
@@ -189,7 +204,7 @@
         // Change the x, y velocity for each node
         function forceCluster(alpha) {
             for (var i = 0; i < nodes.length; ++i) {
-                var node = nodes[i]
+                var node = nodes[i];
                 var target = node.target || center;
                 node.vx -= (node.x - target.x) * alpha;
                 node.vy -= (node.y - target.y) * alpha;
@@ -201,16 +216,14 @@
                 var node = centerSeekers.pop();
                 node.color = node.destinationCluster.color;                
                 node.target = node.destinationCluster;
-                pendings.push(node) 
+                pendings.push(node); 
 
                 simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
                 setTimeout(goToDestination, 100);  // Call itself again .1 second later
             } else {
                 setTimeout(classifyPendings, 1000); // Once all at destination (as pending), classify into results category
             }
-        }
-
-        setTimeout(goToDestination, 1000);
+        }              
 
         // Next level of classification into results groups
         function classifyPendings() {
@@ -228,7 +241,7 @@
 
                     // Assign new locations relative to the current destination's center depending on the classification.
                     if (node.classification === 'recognized') {
-                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta - 10);
+                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta - 15);
                         node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
                             y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     } else if (node.classification === 'rejected') {
@@ -236,7 +249,7 @@
                         node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
                             y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     } else {
-                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta + 10);
+                        var radianTheta = (Math.PI / 180) * (node.destinationCluster.theta + 15);
                         node.target = {x: (destinationClusterRingRadius + classificationOffset) * Math.cos(radianTheta) + center.x, 
                             y: (destinationClusterRingRadius + classificationOffset) * Math.sin(radianTheta) + center.y}
                     }
@@ -255,25 +268,22 @@
                 }, 5000);
             }
         }
+    }
 
-        // Create texts
-        createText("Seekers", center.x, center.y - 20);
-        createText('* Each dot represents 1000 asylum seekers', width/2, height - 30)
-                
-        function createText(text, x, y) {
-            var translate = 'translate(' + x + ', ' + y + ')';
-            var text = svg.append('text')
-                .attr('transform', translate)
-                .style('text-anchor', 'middle')
-                .style('fill', 'black')
-                .attr('dy', '-2.5em')
-                .style('font-size', 15)
-                .style('font-family', "garamond")
-                .style('font-weight', 'bold')
-                .text(text);
-            return text;
+    // function from: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+    function shuffle(array) {
+        var currentIndex = array.length, temporaryValue, randomIndex;
+        // While there remain elements to shuffle...
+        while (0 !== currentIndex) {
+            // Pick a remaining element...
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex -= 1;
+            // And swap it with the current element.
+            temporaryValue = array[currentIndex];
+            array[currentIndex] = array[randomIndex];
+            array[randomIndex] = temporaryValue;
         }
-
-    });
+        return array;
+    }
 
 </script>
