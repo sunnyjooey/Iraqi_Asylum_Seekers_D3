@@ -21,7 +21,7 @@
         width = 1000 - margin.left - margin.right,
         height = 1000 - margin.top - margin.bottom;
 
-    var radius = 3;
+    var radius = 2;
     var center = {
         x: width /2,
         y: height /2
@@ -102,7 +102,7 @@
         addData(filenames.shift());
 
         function addData(filename) {
-            //if (simulation) simulation.stop();
+            // if (simulation) simulation.stop();
             d3.json(filename, function (error, data) {
             var dataset;
             if (error) {
@@ -148,12 +148,21 @@
                 //console.log(centerSeekers)
                 //console.log(nodes)
 
+                if (circle) {
+                    circle.remove();
+                }
                 // Add the nodes
                 circle = svg.selectAll("circle")
                     .data(nodes)
                     .enter().append("circle")
                     .attr("r", function (d) {
                         return d.radius;
+                    })
+                    .attr("cx", function (d) {
+                        return d.x;
+                    })
+                    .attr("cy", function (d) {
+                        return d.y;
                     })
                     .style("fill", function (d) {
                         return d.color;
@@ -163,16 +172,18 @@
                 simulation = d3.forceSimulation(nodes)
                     .force("collide", forceCollide)
                     .force("cluster", forceCluster)
-                    .on("tick", tick);
+                    .on("tick", tick)
+                    .alpha(0.015);
 
                 setTimeout(goToDestination, 1000);
+
             });
         } //addData ends here
 
         // Prevent collisions between nodes
         var forceCollide = d3.forceCollide()
             .radius(function (d) {
-                return d.radius + 2;
+                return d.radius + 1;
             });
 
         // Change the x, y velocity for each node
@@ -200,7 +211,7 @@
                 });
             }
 
-        var updateInterval = 20;
+        var updateInterval = 10;//20;
 
         function goToDestination() {
             if (centerSeekers.length > 0) {
