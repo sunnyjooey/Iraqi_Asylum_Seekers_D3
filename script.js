@@ -10,7 +10,7 @@ var margin = { top: 30, right: 10, bottom: 10, left: 400 },
 var radius = 2.5;
 var center = {
     x: width /2,
-    y: height /2
+    y: (height /2) - (height/25)
 };
 
 var destinationClusterRingRadius = 200;
@@ -47,6 +47,13 @@ var destinationClusters = {
 var seekerText = createText("", center.x, center.y - 15, 20);
 createText('*Each dot represents 1000 people', 150 - 27, height + 5, 10);
 createText('**Data source: UNHCR Population Statistics', 150, height + 15, 10);
+
+var circleLegendRecog = svg.append("circle")
+                .attr("r", radius+2)
+                .style("fill", "#005b96")
+                .attr("transform", "translate(" + ((width/5)*4) + "," + (height - 70) + ")")
+                .append("g");
+createText('= Pending', ((width/5)*4) + 33, height - 55 + 14, 10);
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
@@ -93,6 +100,14 @@ function classify(id, destinationClusters) {
     }
 }
 
+// For hover annotation 
+// from: http://plnkr.co/edit/JpVkqaZ1AmFdBbOMwMup?p=preview
+var tooltip = d3.select("body")
+    .append("div")
+    .style("position", "absolute")
+    .style("z-index", "10")
+    .style("visibility", "hidden");
+
 // Vars to build
 var nodes = [];
 var centerSeekers = [];
@@ -101,9 +116,13 @@ var simulation;
 var circle;
 var allFilenames = ['irq_13_js.json', 'irq_14_js.json', 'irq_15_js.json', 'irq_16_js.json'];
 var filenames = allFilenames.slice();
+var numberTracker = {
+};
 
+// Reset everything
 function reset() {
     filenames = allFilenames.slice();
+    seekerText.text("");
     if (circle) {
         circle.remove();
     }
@@ -115,7 +134,7 @@ function reset() {
     pendings = [];
 }
 
-// Master function
+// Master function (one year at a time)
 function nextYear() {
     addData(filenames.shift());
 }
@@ -143,6 +162,12 @@ function addData(filename) {
             destinationCluster.rejected = Math.round(d.Rejected / 1000);
             destinationCluster.other = Math.round(d.Other / 1000);
 
+            // Buidling numberTracker for hover
+            numberTracker[d.Destination] = numberTracker[d.Destination] || {};
+            numberTracker[d.Destination]['recognized'] = (numberTracker[d.Destination]['recognized'] || 0) + d.Recognized;
+            numberTracker[d.Destination]['rejected'] = (numberTracker[d.Destination]['rejected'] || 0) + d.Rejected;
+            numberTracker[d.Destination]['other'] = (numberTracker[d.Destination]['other'] || 0) + d.Other;
+
             // Create nodes for this destination
             d3.range(destinationCluster.total).map(function (id) {
                 var node = {
@@ -152,9 +177,11 @@ function addData(filename) {
                     y: center.y,
                     radius: radius,
                     destinationCluster: destinationCluster,
+                    destination: d.Destination,
                     // Classify the nodes in this destination
                     classification: classify(id, destinationCluster),
-                    color: "#283747"
+                    color: "#283747",
+                    text: 'Seekers'
                 };
                 centerSeekers.push(node);
             });   
@@ -164,7 +191,7 @@ function addData(filename) {
         centerSeekers = shuffle(centerSeekers);
         nodes = nodes.concat(centerSeekers);
         //console.log(centerSeekers)
-        //console.log(nodes)
+        console.log(nodes)
 
         if (circle) {
             circle.remove();
@@ -185,7 +212,18 @@ function addData(filename) {
             })
             .style("fill", function (d) {
                 return d.color;
-            });
+            })
+            .on("mouseover", function(d) {
+                var text = d.text === 'usenumbertracker' ? numberTracker[d.destination][d.classification] : d.text;
+                tooltip.text(text);
+                return tooltip.style("visibility", "visible");
+            })
+            .on("mousemove", function(d) {
+                return tooltip.style("top", (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");
+            })
+            .on("mouseout", function(d) { 
+                return tooltip.style("visibility", "hidden");}
+            );
 
         // Force-directed layout
         simulation = d3.forceSimulation(nodes)
@@ -238,6 +276,7 @@ function goToDestination() {
         var node = centerSeekers.pop();
         node.color = node.destinationCluster.color;
         node.target = node.destinationCluster;
+        node.text = node.destination;
         pendings.push(node); 
 
         simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
@@ -263,6 +302,7 @@ function classifyPendings() {
         if (classification) {
             node.color = results[node.classification].color;
 
+            node.text = 'usenumbertracker'; 
             // Clone the current target
             node.target = { x: node.target.x, y: node.target.y };
 
@@ -331,4 +371,3 @@ function createText(text, x, y, fs) {
         .text(text);
     return text;
 }
-
