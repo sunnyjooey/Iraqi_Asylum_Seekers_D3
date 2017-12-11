@@ -1,15 +1,16 @@
 // code based on various internet sources, including:
 // https://flowingdata.com/2016/08/23/make-a-moving-bubbles-chart-to-show-clustering-and-distributions/
 // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
+// http://d3indepth.com/force-layout/
 
 // Global vars
 var margin = { top: 30, right: 10, bottom: 10, left: 30 },
-    width = 1200,
+    width = 1625,
     height = 700;
 
 var radius = 2.5;
 var center = {
-    x: width /2 + 200, 
+    x: width /2, 
     y: (height /2) - (height/25)
 };
 
@@ -24,13 +25,14 @@ var svg = d3.select("body").append("svg")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
     .append("g");
 
+// Colors for each result category
 var results = {
     "recognized": { x: 0, y: 0, color: "#008744" },
     "rejected": { x: 0, y: 0, color: "#d62d20" },
     "other": { x: 0, y: 0, color: "#ffa700" }
 };
 
-// Create rings around the center 
+// Create rings around the center for each country destination
 var destinationClusters = {
     "Netherlands": { theta: - 150 - 40, color: "#005b96", recogtheta: - 150 - 40 - resultoffset, rejecttheta: - 150 - 40, othertheta: - 150 - 40 + resultoffset },
     "Sweden": { theta: - 150, color: "#005b96", recogtheta: - 150 - resultoffset, rejecttheta: - 150, othertheta: - 150 + resultoffset },
@@ -44,46 +46,46 @@ var destinationClusters = {
 };
 
 // Create labels
+var explainTextX = 150;
+var explainTextY = 70;
 var seekerText = createText("", center.x, center.y - 15, 20);
-var explanationText = createText("", 100, 100, 20);
-var explanationText2 = createText("", 700, 100, 20);
-createText('*Each dot represents approximately 1000 people', 150 - 27, height + 5, 10);
-createText('**Data source: UNHCR Population Statistics', 150, height + 15, 10);
+var explanationText = createText("", explainTextX, explainTextY, 14);
+createText('*Each dot represents approximately 1000 people', width/2 - 145, height + 5, 12);
+createText('**Data source: UNHCR Population Statistics', width/2 - 150, height + 20, 12);
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
                 .style("fill", "#005b96")
-                .attr("transform", "translate(" + ((width/5)*4) + "," + (height - 70) + ")")
+                .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 70) + ")")
                 .append("g");
-createText('= Pending', ((width/5)*4) + 33, height - 55 + 14, 10);
+createText('= Pending', width/2 + 150 + 34, height -36, 12);
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
                 .style("fill", results.recognized.color)
-                .attr("transform", "translate(" + ((width/5)*4) + "," + (height - 55) + ")")
+                .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 55) + ")")
                 .append("g");
-createText('= Recognized', ((width/5)*4) + 40, height - 55 + 28, 10);
+createText('= Recognized', width/2 + 150 + 42, height - 21, 12);
 
 var circleLegendReject = svg.append("circle")
             .attr("r", radius+2)
             .style("fill", results.rejected.color)
-            .attr("transform", "translate(" + ((width/5)*4) + "," + (height - 40) + ")")
+            .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 40) + ")")
             .append("g");
-createText('= Rejected', ((width/5)*4) + 33, height - 55 + 42, 10);
+createText('= Rejected', width/2 + 150 + 35, height - 7, 12);
 
 var circleLegendOther = svg.append("circle")
             .attr("r", radius+2)
             .style("fill", results.other.color)
-            .attr("transform", "translate(" + ((width/5)*4) + "," + (height - 25) + ")")
+            .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 25) + ")")
             .append("g");
-createText('= Other Outcome', ((width/5)*4) + 47, height + 3, 10);
+createText('= Other Outcome', width/2 + 150 + 52, height + 9, 12);
 
 // Build destinationClusters
 Object.keys(destinationClusters).forEach(function (key) {
     var cluster = destinationClusters[key];
     cluster.x = convertCoordX(destinationClusterRingRadius, cluster.theta);
     cluster.y = convertCoordY(destinationClusterRingRadius, cluster.theta);
-    // Create labels
     createText(key, cluster.x, cluster.y - 15, 15);
 });
 // console.log(destinationClusters)
@@ -111,6 +113,7 @@ var tooltip = d3.select("body")
     .append("div")
     .style("position", "absolute")
     .style('font-family', "garamond")
+    .style('font-weight', 'bold')
     .style("z-index", "10")
     .style("visibility", "hidden");
 
@@ -122,12 +125,12 @@ var simulation;
 var circle;
 var allFilenames = ['irq_13_js.json', 'irq_14_js.json', 'irq_15_js.json', 'irq_16_js.json'];
 var filenames = allFilenames.slice();
-var numberTracker = {
-};
+var numberTracker = { };
 
-var explanations = {'irq_13_js.json':'year1', 
-    'irq_14_js.json':'year2',  
-    'irq_15_js.json':'year3',  
+// Text explanations
+var explanations = {'irq_13_js.json':'In the years following the 2003 Iraq Invasion, the number of Iraqi asylum seekers ranged between 50 ~ 80 thousand per year.', 
+    'irq_14_js.json':"Conflict began in early 2014 and escalated into a civil war with the conquest of Mosul, Iraq's second largest city, by ISIS in June.",
+    'irq_15_js.json':'year3',
     'irq_16_js.json':'year4'
 }
 
@@ -156,6 +159,7 @@ function nextYear() {
 
 function addData(filename) {
     // if (simulation) simulation.stop();
+    // Load file
     d3.json(filename, function (error, data) {
     var dataset;
     if (error) {
@@ -164,9 +168,9 @@ function addData(filename) {
             dataset = data;
             console.log(data);
         }
-
+        // Add text
         seekerText.text('Asylum Seekers in 20' + filename.substring(4,6));
-        explanationText.text(explanations[filename])
+        explanationText.text(explanations[filename]).call(wrapText,300, explainTextX);
 
         // Create nodes based on the dataset
         dataset.forEach(function (d) {
@@ -178,7 +182,7 @@ function addData(filename) {
             destinationCluster.rejected = Math.round(d.Rejected / 1000);
             destinationCluster.other = Math.round(d.Other / 1000);
 
-            // Buidling numberTracker for hover
+            // Build numberTracker for hover 
             var pendingCount = d.Total_apps - d.Recognized - d.Rejected - d.Other;
             numberTracker[d.Destination] = numberTracker[d.Destination] || {};
             numberTracker[d.Destination]['recognized'] = (numberTracker[d.Destination]['recognized'] || 0) + d.Recognized;
@@ -209,8 +213,9 @@ function addData(filename) {
         centerSeekers = shuffle(centerSeekers);
         nodes = nodes.concat(centerSeekers);
         //console.log(centerSeekers)
-        console.log(nodes)
+        //console.log(nodes)
 
+        // Remove old nodes so there is no overlap
         if (circle) {
             circle.remove();
         }
@@ -231,6 +236,7 @@ function addData(filename) {
             .style("fill", function (d) {
                 return d.color;
             })
+            // For hover function
             .on("mouseover", function(d) {
                 if (d.text == 'usenumbertracker') {
                     var text = numberTracker[d.destination][d.classification];
@@ -351,10 +357,11 @@ function classifyPendings() {
         setTimeout(function () {
             clearInterval(keepAlive);
         }, 5000);
+        // var text = createText('blah', 700, 700, 40)
     }
 } 
 
-// Convert angle with angles -> radians -> coordinates
+// Convert angles -> radians -> coordinates
 function convertCoordX(ringradius, theta) {
     return ringradius * Math.cos((Math.PI / 180) * theta) + center.x;
 }
@@ -379,6 +386,7 @@ function shuffle(array) {
     return array;
 }
 
+// Add texts
 function createText(text, x, y, fs) {
     var translate = 'translate(' + x + ', ' + y + ')';
     var text = svg.append('text')
@@ -392,3 +400,38 @@ function createText(text, x, y, fs) {
         .text(text);
     return text;
 }
+
+// from: https://bl.ocks.org/mbostock/7555321
+function wrapText(text, width, xval) {
+    text.each(function () {
+        var text = d3.select(this),
+            words = text.text().split(/\s+/).reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = .9, // ems
+            x = text.attr("x"),
+            y = text.attr("y"),
+            dy = 0, //parseFloat(text.attr("dy")),
+            tspan = text.text(null)
+                        .append("tspan")
+                        .attr("x", xval)
+                        .attr("y", y)
+                        .attr("dy", dy + "em");
+        while (word = words.pop()) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+                line.pop();
+                tspan.text(line.join(" "));
+                line = [word];
+                tspan = text.append("tspan")
+                            .attr("x", xval)
+                            .attr("y", y )
+                            .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                            .text(word);
+            }
+        }
+    });
+}
+
