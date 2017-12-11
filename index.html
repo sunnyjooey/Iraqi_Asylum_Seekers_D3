@@ -9,31 +9,29 @@
         font-family: Garamond;
         font-weight: bold;
         font-size: 30pt;
+        text-align: center;
     }
-
     body {
         font-family: Garamond;
         font-size: 14pt;
         background-color: #FEF5E7;
     }
-
-    svg {
-        background-color: #ffffff;
-        }
-
-
+    /*svg {
+    background-color: #ffffff;
+    }*/
+    .buttonContainer {
+        font-family: Garamond;
+        text-align: center;
+    }
 </style>
 
 </head>
 
 <body>
-    <div id="title">
     <h1>Iraqi Asylum Seekers: Where Are They Going?</h1>
-        <div id="sub-title">
-        <h2>Shifting narrative here</h2>
-        </div>
-        <button onclick="nextYear()">Continue</button>
-        <button onclick="reset()">Reset</button>
+    <div class="buttonContainer">
+        <button id=continue onclick="nextYear()">Continue</button>
+        <button id=reset onclick="reset()">Reset</button>
     </div>
 
 <script src="https://d3js.org/d3.v4.min.js"></script>

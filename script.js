@@ -3,13 +3,13 @@
 // https://bl.ocks.org/pbogden/854425acb57b4e5a4fdf4242c068a127
 
 // Global vars
-var margin = { top: 30, right: 10, bottom: 10, left: 400 },
-    width = 700,
+var margin = { top: 30, right: 10, bottom: 10, left: 30 },
+    width = 1200,
     height = 700;
 
 var radius = 2.5;
 var center = {
-    x: width /2,
+    x: width /2 + 200, 
     y: (height /2) - (height/25)
 };
 
@@ -30,7 +30,7 @@ var results = {
     "other": { x: 0, y: 0, color: "#ffa700" }
 };
 
-// Create rings around the center with angles -> radians -> coordinates
+// Create rings around the center 
 var destinationClusters = {
     "Netherlands": { theta: - 150 - 40, color: "#005b96", recogtheta: - 150 - 40 - resultoffset, rejecttheta: - 150 - 40, othertheta: - 150 - 40 + resultoffset },
     "Sweden": { theta: - 150, color: "#005b96", recogtheta: - 150 - resultoffset, rejecttheta: - 150, othertheta: - 150 + resultoffset },
@@ -45,7 +45,9 @@ var destinationClusters = {
 
 // Create labels
 var seekerText = createText("", center.x, center.y - 15, 20);
-createText('*Each dot represents 1000 people', 150 - 27, height + 5, 10);
+var explanationText = createText("", 100, 100, 20);
+var explanationText2 = createText("", 700, 100, 20);
+createText('*Each dot represents approximately 1000 people', 150 - 27, height + 5, 10);
 createText('**Data source: UNHCR Population Statistics', 150, height + 15, 10);
 
 var circleLegendRecog = svg.append("circle")
@@ -76,6 +78,7 @@ var circleLegendOther = svg.append("circle")
             .append("g");
 createText('= Other Outcome', ((width/5)*4) + 47, height + 3, 10);
 
+// Build destinationClusters
 Object.keys(destinationClusters).forEach(function (key) {
     var cluster = destinationClusters[key];
     cluster.x = convertCoordX(destinationClusterRingRadius, cluster.theta);
@@ -91,12 +94,14 @@ function classify(id, destinationClusters) {
     var rejected = destinationClusters.rejected;
     var other = destinationClusters.other;
 
-    if (id <= recognized) {
+    if (id < recognized) {
         return 'recognized';
-    } else if (id > recognized && id <= recognized + rejected) {
+    } else if (id < recognized + rejected) {
         return 'rejected';
-    } else if (id > recognized + rejected && id <= recognized + rejected + other) {
+    } else if (id < recognized + rejected + other) {
         return 'other';
+    } else {
+        return 'pending';
     }
 }
 
@@ -105,6 +110,7 @@ function classify(id, destinationClusters) {
 var tooltip = d3.select("body")
     .append("div")
     .style("position", "absolute")
+    .style('font-family', "garamond")
     .style("z-index", "10")
     .style("visibility", "hidden");
 
@@ -119,10 +125,18 @@ var filenames = allFilenames.slice();
 var numberTracker = {
 };
 
+var explanations = {'irq_13_js.json':'year1', 
+    'irq_14_js.json':'year2',  
+    'irq_15_js.json':'year3',  
+    'irq_16_js.json':'year4'
+}
+
+// FUNCTIONS
 // Reset everything
 function reset() {
     filenames = allFilenames.slice();
     seekerText.text("");
+    explanationText.text("");
     if (circle) {
         circle.remove();
     }
@@ -132,6 +146,7 @@ function reset() {
     nodes = [];
     centerSeekers = [];
     pendings = [];
+    numberTracker = {};
 }
 
 // Master function (one year at a time)
@@ -151,6 +166,7 @@ function addData(filename) {
         }
 
         seekerText.text('Asylum Seekers in 20' + filename.substring(4,6));
+        explanationText.text(explanations[filename])
 
         // Create nodes based on the dataset
         dataset.forEach(function (d) {
@@ -163,10 +179,12 @@ function addData(filename) {
             destinationCluster.other = Math.round(d.Other / 1000);
 
             // Buidling numberTracker for hover
+            var pendingCount = d.Total_apps - d.Recognized - d.Rejected - d.Other;
             numberTracker[d.Destination] = numberTracker[d.Destination] || {};
             numberTracker[d.Destination]['recognized'] = (numberTracker[d.Destination]['recognized'] || 0) + d.Recognized;
             numberTracker[d.Destination]['rejected'] = (numberTracker[d.Destination]['rejected'] || 0) + d.Rejected;
             numberTracker[d.Destination]['other'] = (numberTracker[d.Destination]['other'] || 0) + d.Other;
+            numberTracker[d.Destination]['pending'] = (numberTracker[d.Destination]['pending'] || 0) + pendingCount;
 
             // Create nodes for this destination
             d3.range(destinationCluster.total).map(function (id) {
@@ -181,7 +199,7 @@ function addData(filename) {
                     // Classify the nodes in this destination
                     classification: classify(id, destinationCluster),
                     color: "#283747",
-                    text: 'Seekers'
+                    text: ''
                 };
                 centerSeekers.push(node);
             });   
@@ -214,7 +232,11 @@ function addData(filename) {
                 return d.color;
             })
             .on("mouseover", function(d) {
-                var text = d.text === 'usenumbertracker' ? numberTracker[d.destination][d.classification] : d.text;
+                if (d.text == 'usenumbertracker') {
+                    var text = numberTracker[d.destination][d.classification];
+                } else {
+                    var text = d.text;
+                }
                 tooltip.text(text);
                 return tooltip.style("visibility", "visible");
             })
@@ -276,7 +298,6 @@ function goToDestination() {
         var node = centerSeekers.pop();
         node.color = node.destinationCluster.color;
         node.target = node.destinationCluster;
-        node.text = node.destination;
         pendings.push(node); 
 
         simulation.alpha(0.015);  // Keep the alpha constant instead of slowing down
@@ -299,10 +320,10 @@ function classifyPendings() {
         var node = pendings.pop();
         var classification = results[node.classification];
 
+        node.text = 'usenumbertracker'; 
         if (classification) {
             node.color = results[node.classification].color;
 
-            node.text = 'usenumbertracker'; 
             // Clone the current target
             node.target = { x: node.target.x, y: node.target.y };
 
@@ -333,7 +354,7 @@ function classifyPendings() {
     }
 } 
 
-// Convert angle to x, y
+// Convert angle with angles -> radians -> coordinates
 function convertCoordX(ringradius, theta) {
     return ringradius * Math.cos((Math.PI / 180) * theta) + center.x;
 }
