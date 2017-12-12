@@ -46,47 +46,54 @@ var destinationClusters = {
 };
 
 // Create labels
-var explainTextX = 150;
-var explainTextY = 70;
-var seekerText = createText("", center.x, center.y - 15, 20);
-var explanationText = createText("", explainTextX, explainTextY, 14);
-createText('*Each dot represents approximately 1000 people', width/2 - 145, height + 5, 12);
-createText('**Data source: UNHCR Population Statistics', width/2 - 150, height + 20, 12);
+var explainTextLeftX = 125;
+var explainTextLeftY = 70;
+var explainTextRightX = 550;
+var explainTextRightY = 70;
+var seekerText = createText("", center.x, center.y - 15, 'middle', 20);
+var explanationTextLeft = createText("", explainTextLeftX, explainTextLeftY, 'start', 14);
+var explanationTextRight = createText("", explainTextRightX, explainTextRightY, 'start', 14);
+var source = createText('* Data source: UNHCR Population Statistics', width/2 - 250, height + 10, 'start', 14);
+var recogtext = createText("", explainTextRightX +565, explainTextRightY +70, 'start', 12);
+var rejecttext = createText("", explainTextRightX +565, explainTextRightY +85, 'start', 12);
+var othertext = createText("", explainTextRightX +565, explainTextRightY +100, 'start', 12);
+var pendingtext = createText("", explainTextRightX +565, explainTextRightY +115, 'start', 12);
+var totaltext = createText("", explainTextRightX +565, explainTextRightY +130, 'start', 12);
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
                 .style("fill", "#005b96")
                 .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 70) + ")")
                 .append("g");
-createText('= Pending', width/2 + 150 + 34, height -36, 12);
+createText('= Pending', width/2 + 150 + 7, height -36, 'start', 12);
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
                 .style("fill", results.recognized.color)
                 .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 55) + ")")
                 .append("g");
-createText('= Recognized', width/2 + 150 + 42, height - 21, 12);
+createText('= Recognized', width/2 + 150 + 7, height - 21, 'start', 12);
 
 var circleLegendReject = svg.append("circle")
             .attr("r", radius+2)
             .style("fill", results.rejected.color)
             .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 40) + ")")
             .append("g");
-createText('= Rejected', width/2 + 150 + 35, height - 7, 12);
+createText('= Rejected', width/2 + 150 + 7, height - 7, 'start', 12);
 
 var circleLegendOther = svg.append("circle")
             .attr("r", radius+2)
             .style("fill", results.other.color)
             .attr("transform", "translate(" + (width/2 + 150) + "," + (height - 25) + ")")
             .append("g");
-createText('= Other Outcome', width/2 + 150 + 52, height + 9, 12);
+createText('= Other Outcome', width/2 + 150 + 7, height + 9, 'start', 12);
 
 // Build destinationClusters
 Object.keys(destinationClusters).forEach(function (key) {
     var cluster = destinationClusters[key];
     cluster.x = convertCoordX(destinationClusterRingRadius, cluster.theta);
     cluster.y = convertCoordY(destinationClusterRingRadius, cluster.theta);
-    createText(key, cluster.x, cluster.y - 15, 15);
+    createText(key, cluster.x, cluster.y - 15, 'middle', 18);
 });
 // console.log(destinationClusters)
 
@@ -107,15 +114,7 @@ function classify(id, destinationClusters) {
     }
 }
 
-// For hover annotation 
-// from: http://plnkr.co/edit/JpVkqaZ1AmFdBbOMwMup?p=preview
-var tooltip = d3.select("body")
-    .append("div")
-    .style("position", "absolute")
-    .style('font-family', "garamond")
-    .style('font-weight', 'bold')
-    .style("z-index", "10")
-    .style("visibility", "hidden");
+var findYear = {72: 13, 224: 14, 550: 15, 981: 16};
 
 // Vars to build
 var nodes = [];
@@ -126,10 +125,11 @@ var circle;
 var allFilenames = ['irq_13_js.json', 'irq_14_js.json', 'irq_15_js.json', 'irq_16_js.json'];
 var filenames = allFilenames.slice();
 var numberTracker = { };
+var numberYear = { };
 
 // Text explanations
 var explanations = {'irq_13_js.json':'In the years following the 2003 Iraq Invasion, the number of Iraqi asylum seekers ranged between 50 ~ 80 thousand per year.', 
-    'irq_14_js.json':"Conflict began in early 2014 and escalated into a civil war with the conquest of Mosul, Iraq's second largest city, by ISIS in June.",
+    'irq_14_js.json':"Conflict began in early 2014 and escalated into a civil war with the ISIS conquest of Mosul, Iraq's second largest city, in June.",
     'irq_15_js.json':'year3',
     'irq_16_js.json':'year4'
 }
@@ -138,8 +138,6 @@ var explanations = {'irq_13_js.json':'In the years following the 2003 Iraq Invas
 // Reset everything
 function reset() {
     filenames = allFilenames.slice();
-    seekerText.text("");
-    explanationText.text("");
     if (circle) {
         circle.remove();
     }
@@ -150,6 +148,16 @@ function reset() {
     centerSeekers = [];
     pendings = [];
     numberTracker = {};
+    numberYear = {};
+    numpending = 0;
+    seekerText.text("");
+    explanationTextLeft.text("");
+    explanationTextRight.text("");
+    recogtext.text("");
+    rejecttext.text("");
+    othertext.text("");
+    pendingtext.text("");
+    totaltext.text("");
 }
 
 // Master function (one year at a time)
@@ -166,11 +174,11 @@ function addData(filename) {
         console.log(error);
         } else {
             dataset = data;
-            console.log(data);
+            //console.log(data);
         }
         // Add text
         seekerText.text('Asylum Seekers in 20' + filename.substring(4,6));
-        explanationText.text(explanations[filename]).call(wrapText,300, explainTextX);
+        explanationTextLeft.text(explanations[filename]).call(wrapText,300, explainTextLeftX);
 
         // Create nodes based on the dataset
         dataset.forEach(function (d) {
@@ -189,6 +197,15 @@ function addData(filename) {
             numberTracker[d.Destination]['rejected'] = (numberTracker[d.Destination]['rejected'] || 0) + d.Rejected;
             numberTracker[d.Destination]['other'] = (numberTracker[d.Destination]['other'] || 0) + d.Other;
             numberTracker[d.Destination]['pending'] = (numberTracker[d.Destination]['pending'] || 0) + pendingCount;
+            // console.log(numberTracker)
+
+            // Build numberYear for text
+            numberYear[filename.substring(4,6)] = numberYear[filename.substring(4,6)] || {};
+            numberYear[filename.substring(4,6)]['recognized'] = (numberYear[filename.substring(4,6)]['recognized'] || 0) + d.Recognized;
+            numberYear[filename.substring(4,6)]['rejected'] = (numberYear[filename.substring(4,6)]['rejected'] || 0) + d.Rejected;
+            numberYear[filename.substring(4,6)]['other'] = (numberYear[filename.substring(4,6)]['other'] || 0) + d.Other;
+            numberYear[filename.substring(4,6)]['pending'] = (numberYear[filename.substring(4,6)]['pending'] || 0) + pendingCount;
+            //console.log(numberYear)
 
             // Create nodes for this destination
             d3.range(destinationCluster.total).map(function (id) {
@@ -261,7 +278,6 @@ function addData(filename) {
             .alpha(0.015);
 
         setTimeout(goToDestination, 1000);
-
     });
 } //addData ends here
 
@@ -321,11 +337,12 @@ function goToDestination() {
 }
 
 // Next level of classification into results groups
+var numpending = 0;
 function classifyPendings() {
     if (pendings.length > 0) {
         var node = pendings.pop();
         var classification = results[node.classification];
-
+        numpending = numpending + 1;
         node.text = 'usenumbertracker'; 
         if (classification) {
             node.color = results[node.classification].color;
@@ -357,11 +374,18 @@ function classifyPendings() {
         setTimeout(function () {
             clearInterval(keepAlive);
         }, 5000);
-        // var text = createText('blah', 700, 700, 40)
+        // Add text explanation
+        explanationTextRight.text('Each dot represents approximately 1000 people. Hover over the dots to see exact figure.')
+        .call(wrapText,300, explainTextRightX);
+        recogtext.text("Total Recognized: " + numberYear[findYear[numpending]]['recognized']);
+        rejecttext.text("Total Rejected: " + numberYear[findYear[numpending]]['rejected']);
+        othertext.text("Total Other Outcome: " + numberYear[findYear[numpending]]['other']);
+        pendingtext.text("Total Pending: " + numberYear[findYear[numpending]]['pending']);
+        totaltext.text("Total Applications: " + (numberYear[findYear[numpending]]['recognized'] + numberYear[findYear[numpending]]['rejected'] + numberYear[findYear[numpending]]['other'] + numberYear[findYear[numpending]]['pending']));
     }
 } 
 
-// Convert angles -> radians -> coordinates
+// Convert angles -> radians -> coordinates 
 function convertCoordX(ringradius, theta) {
     return ringradius * Math.cos((Math.PI / 180) * theta) + center.x;
 }
@@ -387,11 +411,11 @@ function shuffle(array) {
 }
 
 // Add texts
-function createText(text, x, y, fs) {
+function createText(text, x, y, txtanc, fs) {
     var translate = 'translate(' + x + ', ' + y + ')';
     var text = svg.append('text')
         .attr('transform', translate)
-        .style('text-anchor', 'middle')
+        .style('text-anchor', txtanc)
         .style('fill', 'black')
         .attr('dy', '-2.5em')
         .style('font-size', fs)
@@ -435,3 +459,21 @@ function wrapText(text, width, xval) {
     });
 }
 
+// For hover annotation 
+// from: http://plnkr.co/edit/JpVkqaZ1AmFdBbOMwMup?p=preview
+var tooltip = d3.select("body")
+    .append("div")
+    .style("position", "absolute")
+    .style('font-family', "garamond")
+    .style("z-index", "10")
+    .style("visibility", "hidden");
+
+// var trying = svg.append('text').html("<a href='google.com'>new page</a>")
+//         .attr('transform', 'translate(200,200)')
+        
+//         .style('fill', 'black')
+//         .attr('dy', '-2.5em')
+//         .style('font-size', 40)
+//         .style('font-family', "garamond")
+//         .style('font-weight', 'bold')
+//         .text('working?')
