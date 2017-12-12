@@ -128,10 +128,10 @@ var filenames = allFilenames.slice();
 var findYear = {72: 13, 224: 14, 550: 15, 981: 16};
 
 // Text explanations
-var explanations = {'irq_13_js.json':'In the years following the 2003 Iraq Invasion, the number of Iraqi asylum seekers ranged between 50 ~ 80 thousand per year.', 
+var explanations = {'irq_13_js.json':'In the decade following the 2003 Iraq War, the number of Iraqi asylum seekers ranged between 50 ~ 80 thousand per year.', 
     'irq_14_js.json':"Conflict began in early 2014 and escalated into a civil war with the ISIS conquest of Mosul, Iraq's second largest city, in June.",
-    'irq_15_js.json':'year3',
-    'irq_16_js.json':'year4'
+    'irq_15_js.json':'With millions internally displaced, asylum applications doubled for the second year in a row. Many remain for years in pending status.',
+    'irq_16_js.json':'The majority of asylum seekers stay within the region, while a significant proportion aim to go to Europe. A small fraction head to the US.'
 }
 
 // FUNCTIONS
