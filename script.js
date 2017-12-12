@@ -53,12 +53,13 @@ var explainTextRightY = 70;
 var seekerText = createText("", center.x, center.y - 15, 'middle', 20);
 var explanationTextLeft = createText("", explainTextLeftX, explainTextLeftY, 'start', 14);
 var explanationTextRight = createText("", explainTextRightX, explainTextRightY, 'start', 14);
-var source = createText('* Data source: UNHCR Population Statistics', width/2 - 250, height + 10, 'start', 14);
-var recogtext = createText("", explainTextRightX +565, explainTextRightY +70, 'start', 12);
-var rejecttext = createText("", explainTextRightX +565, explainTextRightY +85, 'start', 12);
-var othertext = createText("", explainTextRightX +565, explainTextRightY +100, 'start', 12);
-var pendingtext = createText("", explainTextRightX +565, explainTextRightY +115, 'start', 12);
-var totaltext = createText("", explainTextRightX +565, explainTextRightY +130, 'start', 12);
+var year = createText("", explainTextRightX +565, explainTextRightY +70, 'start', 12)
+var totaltext = createText("", explainTextRightX +565, explainTextRightY +85, 'start', 12);
+var recogtext = createText("", explainTextRightX +565, explainTextRightY +100, 'start', 12);
+var rejecttext = createText("", explainTextRightX +565, explainTextRightY +115, 'start', 12);
+var othertext = createText("", explainTextRightX +565, explainTextRightY +130, 'start', 12);
+var pendingtext = createText("", explainTextRightX +565, explainTextRightY +145, 'start', 12);
+
 
 var circleLegendRecog = svg.append("circle")
                 .attr("r", radius+2)
@@ -97,7 +98,7 @@ Object.keys(destinationClusters).forEach(function (key) {
 });
 // console.log(destinationClusters)
 
-// Preclassify where each node is to go
+// Classify where each node is to go
 function classify(id, destinationClusters) {
     var recognized = destinationClusters.recognized;
     var rejected = destinationClusters.rejected;
@@ -114,18 +115,17 @@ function classify(id, destinationClusters) {
     }
 }
 
-var findYear = {72: 13, 224: 14, 550: 15, 981: 16};
-
 // Vars to build
 var nodes = [];
 var centerSeekers = [];
 var pendings = [];
+var numberTracker = { };
+var numberYear = { };
 var simulation;
 var circle;
 var allFilenames = ['irq_13_js.json', 'irq_14_js.json', 'irq_15_js.json', 'irq_16_js.json'];
 var filenames = allFilenames.slice();
-var numberTracker = { };
-var numberYear = { };
+var findYear = {72: 13, 224: 14, 550: 15, 981: 16};
 
 // Text explanations
 var explanations = {'irq_13_js.json':'In the years following the 2003 Iraq Invasion, the number of Iraqi asylum seekers ranged between 50 ~ 80 thousand per year.', 
@@ -153,6 +153,7 @@ function reset() {
     seekerText.text("");
     explanationTextLeft.text("");
     explanationTextRight.text("");
+    year.text("");
     recogtext.text("");
     rejecttext.text("");
     othertext.text("");
@@ -220,7 +221,7 @@ function addData(filename) {
                     // Classify the nodes in this destination
                     classification: classify(id, destinationCluster),
                     color: "#283747",
-                    text: ''
+                    text: ""
                 };
                 centerSeekers.push(node);
             });   
@@ -375,15 +376,19 @@ function classifyPendings() {
             clearInterval(keepAlive);
         }, 5000);
         // Add text explanation
-        explanationTextRight.text('Each dot represents approximately 1000 people. Hover over the dots to see exact figure.')
+        explanationTextRight.text('Each dot represents approximately 1000 people. Hover over the dots to see exact cumulative figure.')
         .call(wrapText,300, explainTextRightX);
-        recogtext.text("Total Recognized: " + numberYear[findYear[numpending]]['recognized']);
-        rejecttext.text("Total Rejected: " + numberYear[findYear[numpending]]['rejected']);
-        othertext.text("Total Other Outcome: " + numberYear[findYear[numpending]]['other']);
-        pendingtext.text("Total Pending: " + numberYear[findYear[numpending]]['pending']);
-        totaltext.text("Total Applications: " + (numberYear[findYear[numpending]]['recognized'] + numberYear[findYear[numpending]]['rejected'] + numberYear[findYear[numpending]]['other'] + numberYear[findYear[numpending]]['pending']));
+        year.text("TOTALS IN 20" + findYear[numpending])
+        recogtext.text("Recognized: " + format(numberYear[findYear[numpending]]['recognized']));
+        rejecttext.text("Rejected: " + format(numberYear[findYear[numpending]]['rejected']));
+        othertext.text("Other Outcome: " + format(numberYear[findYear[numpending]]['other']));
+        pendingtext.text("Pending: " + format(numberYear[findYear[numpending]]['pending']));
+        totaltext.text("Applications: " + format(numberYear[findYear[numpending]]['recognized'] + numberYear[findYear[numpending]]['rejected'] + numberYear[findYear[numpending]]['other'] + numberYear[findYear[numpending]]['pending']));
     }
 } 
+
+// Number formatting
+format = d3.format(",");
 
 // Convert angles -> radians -> coordinates 
 function convertCoordX(ringradius, theta) {
@@ -459,8 +464,7 @@ function wrapText(text, width, xval) {
     });
 }
 
-// For hover annotation 
-// from: http://plnkr.co/edit/JpVkqaZ1AmFdBbOMwMup?p=preview
+// For hover annotation, from: http://plnkr.co/edit/JpVkqaZ1AmFdBbOMwMup?p=preview
 var tooltip = d3.select("body")
     .append("div")
     .style("position", "absolute")
@@ -468,12 +472,31 @@ var tooltip = d3.select("body")
     .style("z-index", "10")
     .style("visibility", "hidden");
 
-// var trying = svg.append('text').html("<a href='google.com'>new page</a>")
-//         .attr('transform', 'translate(200,200)')
-        
-//         .style('fill', 'black')
-//         .attr('dy', '-2.5em')
-//         .style('font-size', 40)
-//         .style('font-family', "garamond")
-//         .style('font-weight', 'bold')
-//         .text('working?')
+// Make link to source
+var source = createText('* Data source: ', width/2 - 275, height + 10, 'start', 14);
+// from: http://bl.ocks.org/d3noob/8150631
+// draw text on the screen
+svg.append("a")
+    .append("text")
+    .attr("x", width/2 -185)
+    .attr("y", height -29)
+    .style('font-family', "garamond")
+    .style('font-weight', 'bold')
+    .style('fill', '#03396c')
+    .style("font-size", 14)
+    .attr("dy", ".35em")
+    .attr("text-anchor", "start")
+    .style("pointer-events", "none")
+    .text("UNHCR Population Statistics");
+
+// Draw a rectangle
+svg.append("a")
+    .attr("xlink:href", "http://popstats.unhcr.org/en/asylum_seekers")
+    .append("rect")  
+    .attr("x", width/2 -187)
+    .attr("y", height -35)
+    .attr("height", 18)
+    .attr("width", 182)
+    .style("opacity", 0)
+    .attr("rx", 10)
+    .attr("ry", 10);
